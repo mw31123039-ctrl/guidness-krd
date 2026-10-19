@@ -1,0 +1,2545 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>RoadCare 3D — Citizen Dashboard</title>
+  <!-- Leaflet: renders free OpenStreetMap tiles, no API key, no account, nothing blocked -->
+  <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/leaflet/1.9.4/leaflet.min.css">
+  <script src="https://cdnjs.cloudflare.com/ajax/libs/leaflet/1.9.4/leaflet.min.js"></script>
+
+  <style>
+    :root{
+      --bg:#070d1b;
+      --bg-2:#0a1121;
+      --panel:#141b2b;
+      --panel-2:#171f31;
+      --panel-hover:#1b263a;
+      --border:#263247;
+      --text:#eef5ff;
+      --muted:#71839e;
+      --muted-2:#8da0bc;
+      --cyan:#12c9f3;
+      --cyan-2:#00b8df;
+      --red:#ff4d58;
+      --orange:#ffb21c;
+      --green:#08d77d;
+      --purple:#8b5cf6;
+      --shadow:0 18px 45px rgba(0,0,0,.24);
+      --sidebar:236px;
+      --topbar:68px;
+    }
+
+    *{box-sizing:border-box}
+    html,body{margin:0;min-height:100%;font-family:Inter,Segoe UI,Arial,sans-serif;background:var(--bg);color:var(--text)}
+    body{overflow-x:hidden}
+    button{font:inherit}
+    button,input{outline:none}
+
+    /* ---------- Shell ---------- */
+    .app{
+      min-height:100vh;
+      display:flex;
+      background:
+        radial-gradient(circle at 76% 12%,rgba(14,120,160,.055),transparent 25%),
+        radial-gradient(circle at 40% 90%,rgba(20,76,125,.045),transparent 30%),
+        var(--bg);
+    }
+
+    .sidebar{
+      width:var(--sidebar);
+      min-height:100vh;
+      position:fixed;
+      inset:0 auto 0 0;
+      background:#080f1e;
+      border-right:1px solid #1c273a;
+      z-index:30;
+      display:flex;
+      flex-direction:column;
+    }
+
+    .brand{
+      height:68px;
+      padding:0 12px;
+      display:flex;
+      align-items:center;
+      gap:10px;
+      border-bottom:1px solid #172237;
+    }
+
+    .brand-mark{
+      width:29px;height:29px;
+      display:grid;place-items:center;
+      border-radius:7px;
+      background:linear-gradient(145deg,#12d5f7,#087aa5);
+      box-shadow:0 0 18px rgba(18,201,243,.16);
+      color:#07111d;
+      font-weight:900;
+      font-size:16px;
+    }
+
+    .brand-name{
+      font-size:19px;
+      font-weight:800;
+      letter-spacing:-.5px;
+    }
+    .brand-name span{color:var(--cyan)}
+
+    .brand-ai{
+      font-size:9px;
+      color:#28d5f7;
+      padding:2px 5px;
+      border:1px solid rgba(18,201,243,.28);
+      border-radius:4px;
+      background:rgba(18,201,243,.08);
+      margin-left:-4px;
+    }
+
+    .collapse-btn{
+      margin-left:auto;
+      width:25px;height:25px;
+      border:1px solid #243249;
+      border-radius:50%;
+      background:#111a2b;
+      color:#6e819d;
+      cursor:pointer;
+      display:grid;place-items:center;
+      transition:transform .28s ease,color .2s,border-color .2s,background .2s;
+      flex:0 0 24px;
+    }
+    .collapse-btn span{
+  display:inline-block;
+  transform:translateY(-3px);
+}
+    .collapse-btn:hover{color:#b8c9df;border-color:#3a4a63}
+
+    .role-wrap{padding:12px 10px 7px}
+    .role-badge{
+      display:inline-flex;
+      align-items:center;
+      gap:7px;
+      padding:5px 11px;
+      border-radius:14px;
+      color:#14d4f7;
+      background:rgba(18,201,243,.10);
+      font-size:12px;
+      font-weight:700;
+    }
+
+    .nav{padding:2px 10px}
+    .nav-item{
+      width:100%;
+      border:0;
+      background:transparent;
+      color:#7890ac;
+      padding:10px 9px;
+      border-radius:9px;
+      display:flex;
+      align-items:center;
+      gap:12px;
+      cursor:pointer;
+      text-align:left;
+      font-size:14px;
+      font-weight:600;
+      margin:10px 0;
+      transition:background .2s,color .2s,transform .2s;
+    }
+    .nav-item:hover{
+      color:#c8d6e8;
+      background:#101a2c;
+      transform:translateX(2px);
+    }
+    .nav-item.active{
+      color:#13c9f2;
+      background:rgba(10,152,191,.22);
+      box-shadow:inset 0 0 0 1px rgba(18,201,243,.05);
+    }
+    .nav-icon{
+      width:19px;height:19px;
+      display:grid;place-items:center;
+      color:currentColor;
+      flex:0 0 19px;
+    }
+    .nav-icon svg{width:18px;height:18px;stroke:currentColor}
+    .sidebar-spacer{flex:1}
+    .logout{
+      margin:0 10px 16px;
+      color:#7890ac;
+    }
+
+    /* ---------- Main ---------- */
+    .main{
+      width:calc(100% - var(--sidebar));
+      margin-left:var(--sidebar);
+      min-height:100vh;
+    }
+
+    .topbar{
+      height:var(--topbar);
+      border-bottom:1px solid #1a2538;
+      display:flex;
+      align-items:center;
+      padding:0 15px 0 19px;
+      gap:12px;
+      background:rgba(7,13,27,.88);
+      backdrop-filter:blur(14px);
+      position:sticky;
+      top:0;
+      z-index:20;
+    }
+
+    .critical-banner{
+      margin-left:30px;
+      display:flex;
+      align-items:center;
+      gap:7px;
+      padding:10px 25px;
+      border-radius:16px;
+      background:rgba(175,42,54,.28);
+      border:1px solid rgba(255,82,92,.20);
+      color:#ff9aa0;
+      font-size:15px;
+      font-weight:700;
+      white-space:nowrap;
+      animation:criticalAlertPulse 2.1s ease-in-out infinite;
+      will-change:box-shadow,background-color,border-color;
+    }
+    .critical-banner svg{width:14px;height:14px}
+
+    @keyframes criticalAlertPulse{
+      0%,100%{
+        box-shadow:0 0 0 0 rgba(255,77,88,0),0 0 8px rgba(255,77,88,.10);
+      }
+      50%{
+        box-shadow:0 0 0 3px rgba(255,77,88,.10),0 0 22px rgba(255,77,88,.38);
+      }
+    }
+
+    .top-actions{margin-left:auto;display:flex;align-items:center;gap:9px}
+    .top-btn{
+      width:38px;height:38px;
+      border:1px solid #243149;
+      border-radius:10px;
+      background:#111827;
+      color:#8da0b9;
+      cursor:pointer;
+      display:grid;place-items:center;
+      position:relative;
+      transition:.2s;
+    }
+    .top-btn:hover{color:#d7e4f5;border-color:#3a4962;transform:translateY(-1px)}
+    .top-btn svg{width:18px;height:18px}
+    .notif-count{
+      position:absolute;
+      right:-4px;top:-5px;
+      min-width:16px;height:16px;
+      padding:0 4px;
+      border-radius:9px;
+      display:grid;place-items:center;
+      background:#ff4d58;
+      color:white;
+      border:2px solid var(--bg);
+      font-size:9px;
+      font-weight:800;
+    }
+
+    .profile{
+      height:38px;
+      padding:3px 11px 3px 4px;
+      border:1px solid #263149;
+      border-radius:21px;
+      background:#111827;
+      display:flex;
+      align-items:center;
+      gap:8px;
+      cursor:pointer;
+    }
+    .avatar{
+      width:30px;height:30px;border-radius:50%;
+      display:grid;place-items:center;
+      background:linear-gradient(145deg,#25d3f4,#675cf6);
+      color:white;font-weight:800;font-size:13px;
+    }
+    .profile-text{display:flex;flex-direction:column;gap:1px}
+    .profile-text strong{font-size:12px}
+    .profile-text span{font-size:10px;color:#667b97}
+
+    .content{
+      padding:23px 23px 42px;
+      max-width:1600px;
+      margin:0 auto;
+    }
+
+    .page-heading{
+      margin-bottom:22px;
+    }
+    .page-heading h1{
+      margin:0 0 5px;
+      font-size:25px;
+      letter-spacing:-.7px;
+    }
+    .page-heading p{
+      margin:0;
+      color:#7187a4;
+      font-size:14px;
+    }
+
+    /* ---------- Stats ---------- */
+    .stats{
+      display:grid;
+      grid-template-columns:repeat(4,1fr);
+      gap:16px;
+      margin-bottom:19px;
+    }
+    .stat{
+      min-height:143px;
+      padding:18px 20px;
+      border-radius:12px;
+      border:1px solid #252f42;
+      border-left:3px solid var(--accent);
+      background:linear-gradient(145deg,#151c2c,#141a29);
+      box-shadow:var(--shadow);
+      position:relative;
+      overflow:hidden;
+      transition:transform .22s,border-color .22s;
+    }
+    .stat:hover{transform:translateY(-3px);border-color:#354258}
+    .stat::after{
+      content:"";
+      position:absolute;
+      width:100px;height:100px;
+      right:-55px;bottom:-55px;
+      border-radius:50%;
+      background:var(--accent);
+      opacity:.035;
+    }
+    .stat-label{color:#748aa6;font-size:13px;margin-bottom:10px}
+    .stat-value{font-size:32px;line-height:1;font-weight:800;color:var(--accent);margin-bottom:17px}
+    .stat-note{font-size:11px;color:#7186a1}
+    .stat-icon{
+      position:absolute;
+      right:18px;top:18px;
+      width:41px;height:41px;
+      display:grid;place-items:center;
+      border-radius:10px;
+      color:var(--accent);
+      background:color-mix(in srgb,var(--accent) 13%,transparent);
+    }
+    .stat-icon svg{width:21px;height:21px}
+
+    .report-btn{
+      border:0;
+      border-radius:11px;
+      padding:13px 21px;
+      background:linear-gradient(135deg,#11cef4,#08b9df);
+      color:#031521;
+      font-size:16px;
+      font-weight:800;
+      cursor:pointer;
+      box-shadow:0 10px 26px rgba(18,201,243,.13);
+      transition:transform .2s,box-shadow .2s;
+      margin-bottom:23px;
+    }
+    .report-btn:hover{transform:translateY(-2px);box-shadow:0 13px 30px rgba(18,201,243,.20)}
+    .report-btn svg{width:17px;height:17px;vertical-align:-3px;margin-right:7px}
+
+    /* ---------- Lower grid ---------- */
+    .lower-grid{
+      display:grid;
+      grid-template-columns:minmax(0,1.15fr) minmax(360px,.95fr);
+      gap:19px;
+      align-items:start;
+    }
+    .stack{display:grid;gap:15px}
+
+    .panel{
+      background:linear-gradient(145deg,#151c2c,#141a29);
+      border:1px solid #252f42;
+      border-radius:14px;
+      box-shadow:var(--shadow);
+      overflow:hidden;
+    }
+    .panel-head{
+      min-height:61px;
+      padding:15px 21px;
+      display:flex;
+      align-items:center;
+      gap:8px;
+    }
+    .panel-title{
+      display:flex;align-items:center;gap:9px;
+      font-size:16px;font-weight:750;
+    }
+    .panel-title svg{width:17px;height:17px;color:var(--cyan)}
+    .full-map{
+      margin-left:auto;
+      padding:7px 12px;
+      border-radius:7px;
+      border:1px solid #09bfe9;
+      background:rgba(18,201,243,.06);
+      color:#15c7ee;
+      font-size:12px;
+      font-weight:700;
+      cursor:pointer;
+    }
+    .full-map:hover{background:rgba(18,201,243,.13)}
+
+    /* Demo map */
+    .map-area{
+      height:278px;
+      margin:0 20px 0;
+      border-radius:10px;
+      overflow:hidden;
+      position:relative;
+      border:1px solid #2a3444;
+      background:
+        radial-gradient(circle at 48% 52%,rgba(22,157,116,.10),transparent 16%),
+        linear-gradient(34deg,transparent 45%,rgba(104,119,137,.12) 46%,rgba(104,119,137,.12) 47%,transparent 48%),
+        linear-gradient(145deg,transparent 38%,rgba(104,119,137,.10) 39%,rgba(104,119,137,.10) 40%,transparent 41%),
+        linear-gradient(90deg,transparent 55%,rgba(104,119,137,.08) 56%,rgba(104,119,137,.08) 57%,transparent 58%),
+        #17191b;
+      filter:saturate(.8);
+    }
+    /* Real OpenStreetMap mini map on the dashboard */
+    .leaflet-mini-wrap{background:#20252a;filter:none}
+    .leaflet-mini-wrap::before{display:none}
+    #miniLeafletMap{width:100%;height:100%;z-index:1}
+    #miniLeafletMap .leaflet-control-zoom a{background:#0c1627!important;color:#11c8f2!important;border-color:#243249!important}
+    #miniLeafletMap .leaflet-control-zoom a:hover{background:#132238!important}
+    #miniLeafletMap .leaflet-control-attribution{font-size:9px!important}
+    .mini-map-credit{position:absolute;right:4px;bottom:4px;z-index:500;padding:2px 5px;background:rgba(10,16,26,.78);color:#aab7c7;font-size:9px;border-radius:3px;pointer-events:none}
+    body.light-demo #miniLeafletMap .leaflet-control-zoom a{background:#fff!important;color:#078fb5!important;border-color:#d8e2ec!important}
+    body.light-demo #miniLeafletMap .leaflet-control-zoom a:hover{background:#f2f7fb!important}
+
+    .map-area::before{
+      content:"";
+      position:absolute;inset:0;
+      opacity:.55;
+      background:
+        repeating-linear-gradient(12deg,transparent 0 31px,rgba(255,255,255,.035) 32px 33px),
+        repeating-linear-gradient(102deg,transparent 0 48px,rgba(255,255,255,.025) 49px 50px);
+      mix-blend-mode:screen;
+    }
+    .map-label{
+      position:absolute;
+      color:rgba(220,225,230,.25);
+      font-size:12px;
+      letter-spacing:.4px;
+      font-weight:700;
+      transform:rotate(-17deg);
+    }
+    .map-label.one{left:18%;top:22%}
+    .map-label.two{left:53%;top:33%}
+    .map-label.three{left:36%;top:70%}
+    .map-road{
+      position:absolute;
+      height:5px;
+      border-radius:5px;
+      background:rgba(218,220,214,.17);
+      transform-origin:left center;
+    }
+    .r1{width:430px;left:-20px;top:215px;transform:rotate(-21deg)}
+    .r2{width:350px;left:250px;top:65px;transform:rotate(30deg)}
+    .r3{width:300px;left:310px;top:205px;transform:rotate(-52deg)}
+    .r4{width:280px;left:80px;top:90px;transform:rotate(55deg)}
+    .hazard{
+      position:absolute;
+      width:18px;height:18px;border-radius:50%;
+      border:3px solid rgba(255,255,255,.12);
+      box-shadow:0 0 0 5px rgba(255,255,255,.035),0 0 15px currentColor;
+      cursor:pointer;
+      transition:transform .2s;
+    }
+    .hazard:hover{transform:scale(1.25)}
+    .hazard.minor{background:#19d981;color:#19d981;left:61%;top:64%}
+    .hazard.moderate{background:#ffb51d;color:#ffb51d;left:54%;top:60%}
+    .hazard.severe{background:#ff7650;color:#ff7650;left:57%;top:50%}
+    .hazard.critical{background:#ff4d58;color:#ff4d58;left:59%;top:48%;width:25px;height:25px}
+    .map-credit{
+      position:absolute;right:3px;bottom:2px;
+      padding:2px 6px;
+      background:rgba(238,238,238,.9);
+      color:#54606a;font-size:10px;border-radius:4px;
+    }
+    .map-legend{
+      padding:10px 20px 16px;
+      display:flex;
+      gap:22px;
+      color:#7186a1;
+      font-size:11px;
+    }
+    .legend-item{display:flex;align-items:center;gap:6px}
+    .legend-dot{width:9px;height:9px;border-radius:50%}
+
+    /* ---------- Alerts ---------- */
+    .alerts{padding:0 20px 19px;display:grid;gap:9px}
+    .alert{
+      min-height:61px;
+      border-radius:8px;
+      padding:11px 13px 10px 50px;
+      position:relative;
+      border-left:3px solid var(--alert);
+      background:var(--alert-bg);
+    }
+    .alert-icon{
+      position:absolute;
+      left:17px;top:17px;
+      color:var(--alert);
+    }
+    .alert-icon svg{width:18px;height:18px}
+    .alert strong{display:block;font-size:12px;margin-bottom:5px;color:#cbd7e8}
+    .alert span{font-size:10.5px;color:#8396b0}
+    .alert.critical{--alert:#ff4d58;--alert-bg:rgba(147,44,62,.29)}
+    .alert.warning{--alert:#ffb51d;--alert-bg:rgba(116,77,24,.28)}
+    .alert.repair{--alert:#19d981;--alert-bg:rgba(25,217,129,.16)}
+
+    /* ---------- Recent ---------- */
+    .recent-head{
+      padding:16px 19px 12px;
+      display:flex;align-items:center;
+    }
+    .recent-title{display:flex;align-items:center;gap:9px;font-size:16px;font-weight:750}
+    .recent-title svg{color:#13c9f2;width:17px}
+    .view-all{
+      margin-left:auto;
+      padding:7px 11px;
+      border:1px solid #26364d;
+      border-radius:8px;
+      background:#202b3e;
+      color:#a0b1c7;
+      font-size:11px;
+      font-weight:700;
+      cursor:pointer;
+    }
+    .reports{padding:0 19px 8px}
+    .report-row{
+      min-height:68px;
+      display:flex;align-items:center;
+      gap:10px;
+      border-top:1px solid #222d40;
+    }
+    .report-thumb{
+      width:39px;height:39px;border-radius:8px;
+      flex:0 0 39px;
+      background:
+        linear-gradient(135deg,rgba(255,255,255,.2),rgba(255,255,255,.02)),
+        #5b6570;
+      position:relative;overflow:hidden;
+    }
+    .report-thumb::after{
+      content:"";
+      position:absolute;
+      width:28px;height:7px;
+      left:5px;top:17px;
+      border-radius:50%;
+      background:#202830;
+      transform:rotate(-20deg);
+      box-shadow:0 0 0 2px rgba(0,0,0,.18);
+    }
+    .report-info{min-width:0}
+    .report-info strong{display:block;font-size:12px;margin-bottom:4px}
+    .report-info span{display:block;color:#7186a1;font-size:10.5px;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+    .status{
+      margin-left:auto;
+      flex:0 0 auto;
+      padding:5px 9px;
+      border-radius:12px;
+      font-size:9px;
+      font-weight:800;
+      letter-spacing:.2px;
+    }
+    .status.assigned{background:rgba(255,178,28,.14);color:#ffb21c}
+    .status.progress{background:rgba(139,92,246,.18);color:#a78bfa}
+    .status.fixed{background:rgba(8,215,125,.13);color:#20df91}
+
+    /* ---------- Toast ---------- */
+    .toast{
+      position:fixed;
+      right:24px;bottom:23px;
+      padding:12px 15px;
+      border:1px solid #2c3b53;
+      border-radius:11px;
+      background:#121c2d;
+      color:#b9c9dc;
+      box-shadow:0 18px 45px rgba(0,0,0,.4);
+      font-size:12px;
+      opacity:0;
+      transform:translateY(12px);
+      pointer-events:none;
+      transition:.25s;
+      z-index:100;
+    }
+    .toast.show{opacity:1;transform:translateY(0)}
+
+    /* ---------- Full map modal ---------- */
+    .map-modal{
+      position:fixed;inset:0;
+      z-index:90;
+      background:rgba(3,8,17,.78);
+      backdrop-filter:blur(7px);
+      display:flex;align-items:center;justify-content:center;
+      opacity:0;pointer-events:none;
+      transition:.25s;
+      padding:25px;
+    }
+    .map-modal.show{opacity:1;pointer-events:auto}
+    .map-modal-card{
+      width:min(1200px,100%);
+      height:min(720px,90vh);
+      border:1px solid #2c3a50;
+      border-radius:16px;
+      background:#101827;
+      box-shadow:0 30px 100px rgba(0,0,0,.55);
+      overflow:hidden;
+      display:flex;flex-direction:column;
+    }
+    .modal-head{
+      min-height:60px;padding:0 18px;
+      display:flex;align-items:center;
+      border-bottom:1px solid #263247;
+    }
+    .modal-head strong{font-size:15px}
+    .modal-close{
+      margin-left:auto;width:34px;height:34px;
+      border:1px solid #2a3850;border-radius:8px;
+      background:#162033;color:#92a3bb;cursor:pointer;
+      display:grid;place-items:center;
+    }
+    .modal-map{flex:1;margin:18px;border-radius:12px;position:relative;overflow:hidden;background:#151c2c}
+    #fullDashboardMap{width:100%;height:100%}
+    #fullDashboardMap .leaflet-control-zoom a{background:#0c1627!important;color:#11c8f2!important;border-color:#243249!important}
+    #fullDashboardMap .leaflet-control-zoom a:hover{background:#132238!important}
+    #fullDashboardMap .leaflet-control-attribution{font-size:9px!important}
+    body.light-demo #fullDashboardMap .leaflet-control-zoom a{background:#fff!important;color:#078fb5!important;border-color:#d8e2ec!important}
+    body.light-demo #fullDashboardMap .leaflet-control-zoom a:hover{background:#f2f7fb!important}
+
+    /* ---------- Sidebar collapse ---------- */
+    body.sidebar-collapsed{
+      --sidebar:68px;
+    }
+
+    /* One unified, short easing curve — like the original sidebar animation. */
+    .sidebar{
+      width:236px;
+      overflow:visible;
+      transition:width .32s ease-in-out, background .2s ease, border-color .2s ease;
+      will-change:width;
+    }
+
+    .main{
+      width:calc(100% - 236px);
+      margin-left:236px;
+      transition:width .32s ease-in-out, margin-left .32s ease-in-out;
+      will-change:width,margin-left;
+    }
+
+    .brand{
+      position:relative;
+      transition:padding .28s ease-in-out, gap .28s ease-in-out;
+    }
+
+    .brand-name,
+    .brand-ai{
+      transition:opacity .20s ease, width .28s ease-in-out, max-width .28s ease-in-out,
+                  margin .28s ease-in-out, padding .28s ease-in-out, transform .28s ease-in-out;
+    }
+
+    .role-wrap{
+      transition:max-height .28s ease-in-out, padding .28s ease-in-out,
+                  opacity .20s ease, transform .28s ease-in-out;
+      max-height:60px;
+      overflow:hidden;
+    }
+
+    .nav{
+      transition:padding .28s ease-in-out;
+    }
+
+    .nav-item{
+      transition:background .18s ease, color .18s ease, transform .28s ease-in-out,
+                  width .28s ease-in-out, height .28s ease-in-out, margin .28s ease-in-out,
+                  padding .28s ease-in-out, gap .28s ease-in-out, font-size .28s ease-in-out;
+    }
+
+    .nav-icon{
+      transition:color .18s ease, width .28s ease-in-out, height .28s ease-in-out,
+                  flex-basis .28s ease-in-out;
+    }
+
+    .collapse-btn{
+      position:relative;
+      right:-2px;
+      transition:transform .30s ease-in-out, right .30s ease-in-out, top .30s ease-in-out,
+                  background .18s ease, color .18s ease, border-color .18s ease;
+    }
+
+    body.sidebar-collapsed .sidebar{
+      width:68px;
+    }
+
+    body.sidebar-collapsed .brand{
+      padding:0;
+      justify-content:center;
+      gap:0;
+    }
+
+    body.sidebar-collapsed .brand-name,
+    body.sidebar-collapsed .brand-ai{
+      width:0;
+      max-width:0;
+      margin:0;
+      padding:0;
+      opacity:0;
+      overflow:hidden;
+      transform:translateX(-6px);
+      pointer-events:none;
+    }
+
+    body.sidebar-collapsed .role-wrap{
+      max-height:0;
+      padding-top:0;
+      padding-bottom:0;
+      opacity:0;
+      transform:translateY(-4px);
+      pointer-events:none;
+    }
+
+    body.sidebar-collapsed .nav-item{
+      justify-content:center;
+      width:52px;
+      height:44px;
+      margin:4px auto;
+      padding:0;
+      gap:0;
+      color:transparent;
+      font-size:0;
+    }
+
+    body.sidebar-collapsed .nav-item .nav-icon{
+      color:#7890ac;
+      width:20px;
+      height:20px;
+      flex:0 0 20px;
+    }
+
+    body.sidebar-collapsed .nav-item.active .nav-icon{
+      color:#13c9f2;
+    }
+
+    body.sidebar-collapsed .nav-item:hover .nav-icon{
+      color:#c8d6e8;
+    }
+
+    body.sidebar-collapsed .collapse-btn{
+      position:absolute;
+      right:-30px;
+      top:22px;
+      margin:0;
+      transform:rotate(180deg);
+      background:#111a2b;
+      color:#dbe8f7;
+      border-color:#41516a;
+      z-index:50;
+    }
+
+    body.sidebar-collapsed .collapse-btn:hover{
+      background:#17243a;
+      color:#ffffff;
+      border-color:#5a6f8d;
+    }
+
+    body.sidebar-collapsed .nav{
+      padding:10px 8px;
+    }
+
+    body.sidebar-collapsed .logout{
+      margin:0 auto 16px;
+    }
+
+    body.sidebar-collapsed .nav-item:hover{
+      transform:translateY(0);
+    }
+
+    body.sidebar-collapsed .main{
+      width:calc(100% - 68px);
+      margin-left:68px;
+    }
+
+    @keyframes leafletCriticalPulse{0%,100%{box-shadow:0 0 0 0 rgba(255,77,88,0),0 0 8px rgba(255,77,88,.18)}50%{box-shadow:0 0 0 7px rgba(255,77,88,.10),0 0 20px rgba(255,77,88,.50)}}
+    .critical-leaflet-marker{animation:leafletCriticalPulse 1.8s ease-in-out infinite}
+
+    /* ---------- Responsive ---------- */
+    @media (max-width:1050px){
+      .stats{grid-template-columns:repeat(2,1fr)}
+      .lower-grid{grid-template-columns:1fr}
+    }
+    @media (max-width:760px){
+      :root{--sidebar:0px}
+      .sidebar{
+        width:255px;
+        transform:translateX(-100%);
+        transition:.25s;
+      }
+      .sidebar.open{transform:translateX(0)}
+      .main{width:100%;margin-left:0}
+      .content{padding:18px 14px 35px}
+      .topbar{padding-left:12px}
+      .critical-banner{max-width:48vw;overflow:hidden;text-overflow:ellipsis}
+      .profile-text{display:none}
+      .stats{grid-template-columns:1fr}
+      .lower-grid{grid-template-columns:1fr}
+      .map-area{height:250px}
+    }
+
+
+    /* ---------- Perfect Light Theme ---------- */
+    body{transition:background-color .28s ease,color .28s ease}
+    .app,.sidebar,.topbar,.panel,.stat,.profile,.top-btn,.collapse-btn,
+    .nav-item,.report-btn,.full-map,.content,.critical-banner{transition:background .28s ease,border-color .28s ease,color .28s ease,box-shadow .28s ease}
+
+    body.light-demo{
+      --bg:#f3f6fb;
+      --bg-2:#edf2f8;
+      --panel:#ffffff;
+      --panel-2:#f8fafc;
+      --panel-hover:#eef4fa;
+      --border:#d9e2ec;
+      --text:#142033;
+      --muted:#62748c;
+      --muted-2:#72849a;
+      --shadow:0 14px 36px rgba(32,55,84,.10);
+      background:var(--bg);
+      color:var(--text);
+    }
+    body.light-demo .app{
+      background:
+        radial-gradient(circle at 76% 12%,rgba(14,165,233,.07),transparent 25%),
+        radial-gradient(circle at 40% 90%,rgba(59,130,246,.045),transparent 30%),
+        var(--bg);
+    }
+    body.light-demo .sidebar{
+      background:#ffffff;
+      border-right-color:#dce5ef;
+      box-shadow:4px 0 22px rgba(30,55,85,.05);
+    }
+    body.light-demo .brand{border-bottom-color:#e4eaf1}
+    body.light-demo .brand-mark{color:#ffffff;box-shadow:0 0 18px rgba(18,201,243,.14)}
+    body.light-demo .brand-ai{color:#078eb2;background:rgba(18,201,243,.07);border-color:rgba(18,150,190,.22)}
+    body.light-demo .collapse-btn{background:#f3f7fb;border-color:#d8e2ec;color:#71839a}
+    body.light-demo .collapse-btn:hover{color:#33465f;border-color:#b9c8d8}
+    body.light-demo.sidebar-collapsed .collapse-btn{
+      background:#ffffff;
+      color:#3d536e;
+      border-color:#b9c9da;
+      box-shadow:0 2px 8px rgba(30,55,85,.12);
+    }
+    body.light-demo.sidebar-collapsed .collapse-btn:hover{
+      background:#f3f7fb;
+      color:#172b44;
+      border-color:#8fa5bc;
+    }
+    body.light-demo .role-badge{background:rgba(18,201,243,.09);color:#079cc2}
+    body.light-demo .nav-item{color:#657891}
+    body.light-demo .nav-item:hover{color:#253a54;background:#f1f5f9}
+    body.light-demo .nav-item.active{color:#078fb5;background:rgba(18,201,243,.10);box-shadow:inset 0 0 0 1px rgba(18,160,200,.10)}
+    body.light-demo .topbar{background:rgba(255,255,255,.88);border-bottom-color:#dfe7ef}
+    body.light-demo .critical-banner{background:rgba(220,38,38,.07);border-color:rgba(220,38,38,.16);color:#c7353d}
+    body.light-demo .top-btn{background:#f7f9fc;border-color:#d8e2ec;color:#667991}
+    body.light-demo .top-btn:hover{color:#24364d;border-color:#b9c8d8}
+    body.light-demo .notif-count{border-color:#f7f9fc}
+    body.light-demo .profile{background:#f7f9fc;border-color:#d8e2ec}
+    body.light-demo .profile-text span{color:#71839a}
+
+    /* ---------- Settings ---------- */
+    .settings-page{max-width:730px}
+    .settings-card{
+      background:#151c2c;border:1px solid #252f42;border-radius:15px;
+      padding:20px;margin-bottom:20px;box-shadow:0 10px 28px rgba(0,0,0,.10)
+    }
+    .settings-card h3{margin:0 0 17px;font-size:16px;color:#edf4fb;display:flex;align-items:center;gap:9px}
+    .settings-card h3 svg{width:18px;height:18px;stroke:#12c9f3}
+    .settings-profile{display:flex;align-items:center;gap:15px;margin-bottom:20px}
+    .settings-avatar{width:64px;height:64px;border-radius:50%;display:grid;place-items:center;font-size:28px;font-weight:800;color:#fff;background:linear-gradient(135deg,#12c9f3,#7357ff);box-shadow:0 0 24px rgba(18,201,243,.16)}
+    .settings-profile strong{display:block;font-size:18px;color:#dfe9f5}
+    .settings-profile span{display:block;margin-top:3px;font-size:12px;color:#69819d}
+    .settings-grid{display:grid;grid-template-columns:1fr 1fr;gap:13px}
+    .settings-field label,.settings-label{display:block;margin:0 0 7px;font-size:12px;font-weight:700;color:#9aadc3}
+    .settings-input,.settings-select{width:100%;height:42px;border:1px solid #29354a;border-radius:9px;background:#202737;color:#dce6f1;padding:0 13px;font:inherit;font-size:14px;outline:none;transition:.18s}
+    .settings-input:focus,.settings-select:focus{border-color:#10bfe8;box-shadow:0 0 0 3px rgba(18,201,243,.10)}
+    .settings-input[readonly]{color:#7f90a7;cursor:not-allowed}
+    .settings-row{min-height:51px;display:flex;align-items:center;justify-content:space-between;border-bottom:1px solid #222d40}
+    .settings-row:last-child{border-bottom:0}
+    .settings-row strong{font-size:13px;color:#d5dfeb}
+    .settings-row small{display:block;color:#71869e;font-size:11px;margin-top:3px}
+    .switch{position:relative;width:42px;height:24px;flex:0 0 42px}
+    .switch input{opacity:0;width:0;height:0}
+    .switch-slider{position:absolute;inset:0;border-radius:99px;background:#303a4c;border:1px solid #3b475c;cursor:pointer;transition:.2s}
+    .switch-slider:before{content:"";position:absolute;width:18px;height:18px;left:2px;top:2px;border-radius:50%;background:#eef4fa;transition:.2s;box-shadow:0 1px 4px rgba(0,0,0,.25)}
+    .switch input:checked + .switch-slider{background:#12c9f3;border-color:#12c9f3}
+    .switch input:checked + .switch-slider:before{transform:translateX(18px)}
+    .settings-app-field{margin-bottom:15px}
+    .settings-app-field:last-child{margin-bottom:0}
+    .settings-save{border:0;border-radius:8px;background:#12c9f3;color:#06202a;padding:10px 21px;font-weight:800;font-size:13px;cursor:pointer;box-shadow:0 8px 20px rgba(18,201,243,.16);transition:.18s}
+    .settings-save:hover{transform:translateY(-1px);filter:brightness(1.04)}
+    body.light-demo .settings-card{background:linear-gradient(145deg,#fff,#f8fafc);border-color:#dce5ee;box-shadow:var(--shadow)}
+    body.light-demo .settings-card h3{color:#1c2c40}
+    body.light-demo .settings-profile strong{color:#1f3044}
+    body.light-demo .settings-profile span{color:#71839a}
+    body.light-demo .settings-field label,.light-demo .settings-label{color:#60748c}
+    body.light-demo .settings-input,.light-demo .settings-select{background:#f1f4f8;border-color:#d8e2ec;color:#25384f}
+    body.light-demo .settings-input[readonly]{color:#7a899b}
+    body.light-demo .settings-row{border-bottom-color:#e5ebf1}
+    body.light-demo .settings-row strong{color:#30445b}
+    body.light-demo .settings-row small{color:#71839a}
+    @media(max-width:760px){.settings-page{max-width:none}.settings-grid{grid-template-columns:1fr}}
+
+    body.light-demo .page-heading p{color:#6f8198}
+    body.light-demo .stat,
+    body.light-demo .panel{background:linear-gradient(145deg,#ffffff,#f8fafc);border-color:#dce5ee;box-shadow:var(--shadow)}
+    body.light-demo .stat:hover{border-color:#c4d2e1}
+    body.light-demo .stat-label,.light-demo .stat-note{color:#71839a}
+    body.light-demo .panel-title{color:#1c2c40}
+    body.light-demo .full-map{background:rgba(18,201,243,.055);color:#078fb5;border-color:#10b9df}
+    body.light-demo .full-map:hover{background:rgba(18,201,243,.11)}
+    body.light-demo .report-btn{box-shadow:0 10px 26px rgba(18,150,190,.12)}
+    body.light-demo .map-area{border-color:#d5dee8;background:
+      radial-gradient(circle at 48% 52%,rgba(22,157,116,.10),transparent 16%),
+      linear-gradient(34deg,transparent 45%,rgba(87,105,124,.13) 46%,rgba(87,105,124,.13) 47%,transparent 48%),
+      linear-gradient(145deg,transparent 38%,rgba(87,105,124,.11) 39%,rgba(87,105,124,.11) 40%,transparent 41%),
+      linear-gradient(90deg,transparent 55%,rgba(87,105,124,.09) 56%,rgba(87,105,124,.09) 57%,transparent 58%),
+      #e8edf2}
+    body.light-demo .map-area::before{background:
+      repeating-linear-gradient(12deg,transparent 0 31px,rgba(80,98,118,.07) 32px 33px),
+      repeating-linear-gradient(102deg,transparent 0 48px,rgba(80,98,118,.055) 49px 50px);mix-blend-mode:multiply}
+    body.light-demo .map-label{color:rgba(62,78,97,.40)}
+    body.light-demo .map-road{background:rgba(91,107,123,.28)}
+    body.light-demo .legend-item{color:#4f627a;font-weight:600}
+    body.light-demo .legend-item:nth-child(1) .legend-dot{background:#16a34a !important}
+    body.light-demo .legend-item:nth-child(1){color:#15803d}
+    body.light-demo .legend-item:nth-child(2) .legend-dot{background:#eab308 !important}
+    body.light-demo .legend-item:nth-child(2){color:#b88600}
+    body.light-demo .legend-item:nth-child(3) .legend-dot{background:#f97316 !important}
+    body.light-demo .legend-item:nth-child(3){color:#ea580c}
+    body.light-demo .legend-item:nth-child(4) .legend-dot{background:#ef4444 !important}
+    body.light-demo .legend-item:nth-child(4){color:#dc2626}
+    body.light-demo .recent-title{color:#1c2c40}
+    body.light-demo .report-info span{color:#71839a}
+    body.light-demo .report-row{border-color:#e5ebf1}
+    body.light-demo .report-row:hover{background:#f5f8fb}
+    body.light-demo .report-thumb{background:linear-gradient(145deg,#dce6ef,#edf2f7)}
+    body.light-demo .alert strong{color:#26384e}
+    body.light-demo .alert span{color:#71839a}
+    body.light-demo .alert.critical{
+      background:linear-gradient(90deg,rgba(239,68,68,.22),rgba(239,68,68,.07));
+      border-left-color:#ef4444;
+      border-top-color:rgba(239,68,68,.22);
+      border-right-color:rgba(239,68,68,.13);
+      border-bottom-color:rgba(239,68,68,.13);
+    }
+    body.light-demo .alert.warning{
+      background:linear-gradient(90deg,rgba(234,179,8,.23),rgba(234,179,8,.07));
+      border-left-color:#eab308;
+      border-top-color:rgba(234,179,8,.23);
+      border-right-color:rgba(234,179,8,.13);
+      border-bottom-color:rgba(234,179,8,.13);
+    }
+    body.light-demo .alert.repair{
+      background:linear-gradient(90deg,rgba(22,163,74,.21),rgba(22,163,74,.065));
+      border-left-color:#16a34a;
+      border-top-color:rgba(22,163,74,.21);
+      border-right-color:rgba(22,163,74,.12);
+      border-bottom-color:rgba(22,163,74,.12);
+    }
+    body.light-demo .map-modal{background:rgba(30,45,65,.30)}
+    body.light-demo .map-modal-card{background:#ffffff;border-color:#d9e2ec;box-shadow:0 24px 70px rgba(20,40,65,.20)}
+    body.light-demo .modal-head{border-bottom-color:#e3e9f0;color:#1b2b3f}
+    body.light-demo .modal-close{background:#f3f6fa;border-color:#d7e1eb;color:#64778e}
+    body.light-demo .toast{box-shadow:0 15px 35px rgba(20,40,65,.16)}
+    body.light-demo ::-webkit-scrollbar-track{background:#edf2f7}
+    body.light-demo ::-webkit-scrollbar-thumb{background:#bdc9d6}
+    body.light-demo ::-webkit-scrollbar-thumb:hover{background:#9eacbc}
+
+  
+    /* Smooth dashboard entrance after the welcome handoff */
+    .dashboard-entry{
+      position:fixed;
+      inset:0;
+      z-index:99999;
+      display:flex;
+      align-items:center;
+      justify-content:center;
+      background:rgba(4,8,20,.98);
+      opacity:1;
+      pointer-events:none;
+      transition:opacity .72s cubic-bezier(.22,1,.36,1);
+    }
+    .dashboard-entry.hide{opacity:0}
+    .dashboard-entry .entry-glow{
+      width:150px;height:150px;border-radius:50%;
+      background:radial-gradient(circle,rgba(18,201,243,.22),transparent 68%);
+      filter:blur(2px);
+      animation:entryGlow .9s ease-out forwards;
+    }
+    .dashboard-entry .entry-check{
+      position:absolute;width:58px;height:58px;
+      display:grid;place-items:center;border-radius:50%;
+      color:#67e8f9;font-size:25px;font-weight:900;
+      border:1px solid rgba(103,232,249,.45);
+      background:rgba(34,211,238,.10);
+      box-shadow:0 0 35px rgba(34,211,238,.22);
+      animation:entryCheck .55s cubic-bezier(.16,1,.3,1) forwards;
+    }
+    .app.dashboard-entering{
+      opacity:0;
+      transform:scale(1.035);
+      filter:blur(5px);
+    }
+    .app.dashboard-entered{
+      opacity:1;
+      transform:scale(1);
+      filter:blur(0);
+      transition:opacity .75s cubic-bezier(.22,1,.36,1),
+                 transform .85s cubic-bezier(.22,1,.36,1),
+                 filter .65s ease;
+    }
+    @keyframes entryGlow{
+      0%{transform:scale(.55);opacity:0}
+      45%{opacity:1}
+      100%{transform:scale(1.35);opacity:0}
+    }
+    @keyframes entryCheck{
+      0%{transform:scale(.55);opacity:0}
+      65%{transform:scale(1.1);opacity:1}
+      100%{transform:scale(1);opacity:1}
+    }
+    @media(prefers-reduced-motion:reduce){
+      .app.dashboard-entering{opacity:1;transform:none;filter:none}
+      .app.dashboard-entered{transition:none}
+      .dashboard-entry{transition:none}
+      .dashboard-entry .entry-glow,.dashboard-entry .entry-check{animation:none}
+    }
+
+
+    /* Logout confirmation */
+    .logout-modal{
+      position:fixed;
+      inset:0;
+      z-index:100000;
+      display:flex;
+      align-items:center;
+      justify-content:center;
+      padding:24px;
+      background:rgba(2,6,18,.68);
+      backdrop-filter:blur(10px);
+      -webkit-backdrop-filter:blur(10px);
+      opacity:0;
+      visibility:hidden;
+      pointer-events:none;
+      transition:opacity .28s ease,visibility .28s ease;
+    }
+    .logout-modal.show{
+      opacity:1;
+      visibility:visible;
+      pointer-events:auto;
+    }
+    .logout-box{
+      width:min(430px,100%);
+      padding:30px 30px 26px;
+      border:1px solid rgba(103,232,249,.22);
+      border-radius:22px;
+      background:linear-gradient(145deg,rgba(13,22,42,.97),rgba(7,12,27,.98));
+      box-shadow:0 28px 90px rgba(0,0,0,.45),0 0 45px rgba(34,211,238,.08);
+      text-align:center;
+      transform:translateY(18px) scale(.94);
+      opacity:0;
+      transition:transform .38s cubic-bezier(.16,1,.3,1),opacity .3s ease;
+    }
+    .logout-modal.show .logout-box{
+      transform:translateY(0) scale(1);
+      opacity:1;
+    }
+    .logout-icon{
+      width:58px;
+      height:58px;
+      margin:0 auto 16px;
+      display:grid;
+      place-items:center;
+      border-radius:50%;
+      color:#67e8f9;
+      border:1px solid rgba(103,232,249,.38);
+      background:rgba(34,211,238,.09);
+      box-shadow:0 0 30px rgba(34,211,238,.14);
+    }
+    .logout-icon svg{width:27px;height:27px}
+    .logout-box h2{
+      margin:0 0 8px;
+      color:#f1f5f9;
+      font-size:21px;
+    }
+    .logout-box p{
+      margin:0 auto 23px;
+      max-width:330px;
+      color:#94a3b8;
+      font-size:14px;
+      line-height:1.55;
+    }
+    .logout-actions{
+      display:flex;
+      gap:11px;
+    }
+    .logout-actions button{
+      flex:1;
+      min-height:44px;
+      border-radius:12px;
+      font:inherit;
+      font-weight:700;
+      cursor:pointer;
+      transition:transform .2s ease,box-shadow .2s ease,background .2s ease;
+    }
+    .logout-cancel{
+      color:#cbd5e1;
+      background:rgba(148,163,184,.08);
+      border:1px solid rgba(148,163,184,.18);
+    }
+    .logout-cancel:hover{
+      background:rgba(148,163,184,.14);
+      transform:translateY(-1px);
+    }
+    .logout-confirm{
+      color:#041018;
+      background:linear-gradient(135deg,#67e8f9,#22d3ee);
+      border:1px solid rgba(103,232,249,.45);
+      box-shadow:0 8px 25px rgba(34,211,238,.18);
+    }
+    .logout-confirm:hover{
+      transform:translateY(-1px);
+      box-shadow:0 10px 30px rgba(34,211,238,.28);
+    }
+    /* Smooth exit back to login */
+    .logout-page-exit{
+      animation:logoutPageExit .55s cubic-bezier(.22,1,.36,1) forwards;
+      pointer-events:none;
+    }
+    @keyframes logoutPageExit{
+      0%{opacity:1;transform:scale(1);filter:blur(0)}
+      100%{opacity:0;transform:scale(.97);filter:blur(5px)}
+    }
+    @media(prefers-reduced-motion:reduce){
+      .logout-box{transition:none}
+      .logout-modal{transition:none}
+      .logout-page-exit{animation:none;opacity:0}
+    }
+
+</style>
+  <style>
+
+    /* ---------- Report Damage ---------- */
+    .report-damage-page{padding-top:23px}
+    .report-damage-page .page-heading{margin-bottom:25px}
+    .damage-layout{display:grid;grid-template-columns:minmax(0,1.08fr) minmax(420px,.92fr);gap:20px;align-items:start}
+    .damage-left,.damage-right{display:flex;flex-direction:column;gap:16px}
+    .damage-card{border:1px solid #252f42;border-radius:15px;background:#151c2c;box-shadow:var(--shadow);padding:20px}
+    .damage-card-title{display:flex;align-items:center;gap:9px;color:#e8eef7;font-size:15px;font-weight:800;margin-bottom:14px}
+    .damage-card-title svg{width:17px;height:17px;color:#08c9ef;flex:none}
+    .upload-zone{height:175px;border:2px dashed #29364d;border-radius:12px;display:flex;flex-direction:column;align-items:center;justify-content:center;cursor:pointer;transition:.2s;background:rgba(10,17,31,.28);overflow:hidden;position:relative}
+    .upload-zone:hover,.upload-zone.dragover{border-color:#08c9ef;background:rgba(8,201,239,.045)}
+    .upload-zone .upload-icon{width:30px;height:30px;color:#7896b2;margin-bottom:10px}
+    .upload-zone strong{font-size:14px;color:#e3ebf5;font-weight:700}
+    .upload-zone span{font-size:11px;color:#64819b;margin-top:7px}
+    .upload-preview{position:absolute;inset:0;width:100%;height:100%;object-fit:cover;display:none}
+    .upload-preview.show{display:block}
+    .upload-overlay{position:absolute;left:0;right:0;bottom:0;padding:8px 12px;background:linear-gradient(transparent,rgba(3,8,17,.88));display:none;justify-content:space-between;align-items:center;color:#fff;font-size:11px}
+    .upload-overlay.show{display:flex}
+    .remove-photo{border:1px solid rgba(255,255,255,.22);background:rgba(5,12,23,.72);color:#fff;border-radius:6px;padding:5px 9px;cursor:pointer;font-size:10px;font-weight:700}
+    .location-card{padding-bottom:20px}
+    .exact-location-field{margin-top:12px}
+    .location-row{display:flex;gap:7px;align-items:stretch}
+    .damage-input,.damage-select,.damage-textarea{width:100%;border:1px solid #2a3549;background:#202736;color:#dfe8f2;border-radius:8px;outline:none;transition:.18s;font:inherit}
+    .damage-input,.damage-select{height:42px;padding:0 13px;font-size:13px}
+    .damage-select{appearance:auto;cursor:pointer}
+    .damage-textarea{height:90px;padding:12px 13px;resize:vertical;min-height:90px;font-size:13px}
+    .damage-input::placeholder,.damage-textarea::placeholder{color:#66819b}
+    .damage-input:focus,.damage-select:focus,.damage-textarea:focus{border-color:#08c9ef;box-shadow:0 0 0 3px rgba(8,201,239,.08)}
+    .gps-btn{height:42px;min-width:92px;border:1px solid #08c9ef;background:transparent;color:#08c9ef;border-radius:8px;display:flex;align-items:center;justify-content:center;gap:7px;cursor:pointer;font-size:12px;font-weight:800;transition:.18s}
+    .gps-btn:hover{background:rgba(8,201,239,.08)}
+    .gps-btn.loading{opacity:.65;pointer-events:none}
+    .damage-field{margin-bottom:14px}
+    .damage-field:last-child{margin-bottom:0}
+    .damage-label{display:block;color:#9ab0c6;font-size:12px;font-weight:700;margin-bottom:8px}
+    .severity-row{display:flex;gap:8px;flex-wrap:wrap}
+    .severity-btn{height:30px;border:1px solid #29354a;background:#151c2c;color:#8198ad;border-radius:8px;padding:0 13px;display:inline-flex;align-items:center;gap:7px;cursor:pointer;font-size:11px;font-weight:700;transition:.18s}
+    .severity-btn .severity-dot{width:8px;height:8px;border-radius:50%;display:block}
+    .severity-btn:hover{border-color:#3b4b65;color:#dce6f1}
+    .severity-btn.active{color:#eaf4fb;border-color:currentColor;background:rgba(255,255,255,.035);box-shadow:0 0 0 1px currentColor inset}
+    .severity-btn[data-severity="Minor"]{color:#08d77d}.severity-btn[data-severity="Moderate"]{color:#ffb51d}.severity-btn[data-severity="Severe"]{color:#ff7417}.severity-btn[data-severity="Critical"]{color:#ff4d58}
+    .severity-btn[data-severity="Minor"] .severity-dot{background:#08d77d}.severity-btn[data-severity="Moderate"] .severity-dot{background:#ffb51d}.severity-btn[data-severity="Severe"] .severity-dot{background:#ff7417}.severity-btn[data-severity="Critical"] .severity-dot{background:#ff4d58}
+    .submit-report-btn{width:100%;height:48px;border:0;border-radius:9px;background:#1089a8;color:#04141d;font-size:15px;font-weight:800;cursor:pointer;transition:.18s}
+    .submit-report-btn:hover{background:#10a6c9;transform:translateY(-1px)}
+    .submit-report-btn:disabled{opacity:.55;cursor:not-allowed;transform:none}
+    .submit-hint{text-align:center;color:#64819b;font-size:10px;margin-top:13px}
+    .damage-status{display:none;margin-top:12px;border-radius:8px;padding:10px 12px;font-size:11px;font-weight:700;text-align:center}
+    .damage-status.show{display:block}
+    .damage-status.success{color:#08d77d;background:rgba(8,215,125,.10);border:1px solid rgba(8,215,125,.18)}
+    .damage-status.error{color:#ff6a72;background:rgba(255,77,88,.10);border:1px solid rgba(255,77,88,.18)}
+    body.light-demo .damage-card{background:#fff;border-color:#dce5ee}
+    body.light-demo .upload-zone{background:#f8fafc;border-color:#cdd9e5}
+    body.light-demo .upload-zone:hover,body.light-demo .upload-zone.dragover{background:#f2fbfd;border-color:#08bde4}
+    body.light-demo .upload-zone strong,body.light-demo .damage-card-title{color:#263a52}
+    body.light-demo .damage-input,body.light-demo .damage-select,body.light-demo .damage-textarea{background:#f5f7fa;border-color:#d5e0ea;color:#263a52}
+    body.light-demo .severity-btn{background:#fff;border-color:#d8e2ec}
+    body.light-demo .severity-btn:hover{border-color:#b8c8d8}
+    body.light-demo .submit-report-btn{background:#08a9c9;color:#06212a}
+    @media(max-width:900px){.damage-layout{grid-template-columns:1fr}.damage-left,.damage-right{width:100%}}
+    @media(max-width:600px){.location-row{flex-direction:column}.gps-btn{width:100%}.damage-card{padding:16px}}
+
+    /* ---------- Full Map View ---------- */
+    .page-section{display:none}
+
+
+    /* ---------- Safe Route ---------- */
+    .safe-route-page{padding-top:23px}
+    .safe-route-page .page-heading{margin-bottom:24px}
+    .safe-route-notices{display:grid;grid-template-columns:1fr 1fr;gap:12px;margin-bottom:16px}
+    .safe-route-notice{min-height:40px;border-radius:7px;padding:11px 15px;display:flex;align-items:center;gap:9px;font-size:13px;font-weight:700}
+    .safe-route-notice svg{width:17px;height:17px;flex:none}
+    .safe-route-notice.current{background:rgba(18,167,211,.22);border-left:3px solid #0bd0f4;color:#8fdcf0}
+    .safe-route-notice.safer{background:rgba(0,201,137,.19);border-left:3px solid #00d98d;color:#8ee8c8}
+    .safe-route-grid{display:grid;grid-template-columns:minmax(0,1.12fr) minmax(390px,.88fr);gap:14px;align-items:start}
+    .safe-route-map-card{height:420px;border:1px solid #252f42;border-radius:14px;overflow:hidden;background:#151c2c;position:relative}
+    #safeRouteMap{width:100%;height:100%}
+    .safe-route-side{display:flex;flex-direction:column;gap:14px}
+    .safe-route-card{background:#151c2c;border:1px solid #252f42;border-radius:14px;padding:18px 20px}
+    .safe-route-card h3{margin:0 0 14px;font-size:15px;color:#e8eef8}
+    .route-hazard{display:flex;align-items:center;gap:12px;padding:12px 0;border-bottom:1px solid rgba(255,255,255,.06)}
+    .route-hazard:last-child{border-bottom:0;padding-bottom:0}
+    .route-hazard:first-of-type{padding-top:4px}
+    .route-hazard-dot{width:11px;height:11px;border-radius:50%;flex:none;box-shadow:0 0 10px currentColor}
+    .route-hazard-info{min-width:0;flex:1}
+    .route-hazard-info strong{display:block;color:#e8eef8;font-size:13px}
+    .route-hazard-info span{display:block;color:#6f87a3;font-size:11px;margin-top:4px}
+    .route-severity{font-size:10px;font-weight:800;border-radius:12px;padding:4px 9px;white-space:nowrap}
+    .route-severity.critical{color:#ff4d58;background:rgba(255,77,88,.16)}
+    .route-severity.severe{color:#ff7650;background:rgba(255,118,80,.16)}
+    .route-severity.moderate{color:#ffb51d;background:rgba(255,181,29,.16)}
+    .route-legend{display:flex;flex-direction:column;gap:12px}
+    .route-legend-row{display:flex;align-items:center;gap:10px;color:#93a7be;font-size:12px;font-weight:600}
+    .route-line{width:30px;height:3px;border-radius:3px;background:#00d98d}
+    .route-line.current{height:0;border-top:3px dashed #ffb51d;background:transparent}
+    .route-critical-alert{background:rgba(255,77,88,.30);border-left:3px solid #ff4d58;border-radius:7px;padding:12px 14px;color:#f3aab0}
+    .route-critical-alert strong{display:block;color:#ffb8bd;font-size:13px;margin-bottom:5px}
+    .route-critical-alert span{font-size:11px;color:#df8e95}
+    .safe-route-map-card .leaflet-container{font-family:Inter,Segoe UI,Arial,sans-serif}
+    .safe-route-map-card .leaflet-control-zoom a{background:#0c1627!important;color:#11c8f2!important;border-color:#243249!important}
+    .safe-route-map-card .leaflet-control-zoom a:hover{background:#132238!important}
+    .safe-route-map-card .leaflet-control-attribution{font-size:10px!important}
+    .safe-route-marker{background:transparent;border:0}
+    .safe-route-dot{display:block;border-radius:50%;border:2px solid rgba(255,255,255,.75);box-shadow:0 0 12px currentColor}
+    @media(max-width:1050px){
+      .safe-route-grid{grid-template-columns:1fr}
+      .safe-route-side{display:grid;grid-template-columns:1fr 1fr}
+      .route-critical-alert{grid-column:1/-1}
+    }
+    @media(max-width:700px){
+      .safe-route-notices{grid-template-columns:1fr}
+      .safe-route-side{display:flex}
+      .safe-route-map-card{height:340px}
+    }
+
+    /* ---------- My Reports ---------- */
+    .my-reports-page{padding-top:23px}
+    .my-reports-page .page-heading{margin-bottom:25px}
+    .reports-toolbar{display:flex;align-items:center;gap:10px;margin-bottom:20px}
+    .reports-search{height:35px;flex:1;min-width:0;border:1px solid #273248;background:#151c2c;border-radius:8px;color:#a8b8cc;padding:0 13px 0 36px;font-size:12px;outline:none;transition:.2s}
+    .reports-search:focus{border-color:#08c9ef;box-shadow:0 0 0 3px rgba(8,201,239,.08)}
+    .reports-search-wrap{position:relative;flex:1;display:flex}
+    .reports-search-wrap svg{position:absolute;left:13px;top:50%;transform:translateY(-50%);width:15px;height:15px;color:#66819b;pointer-events:none}
+    .report-filters{display:flex;gap:6px;flex-wrap:nowrap}
+    .report-filter{border:1px solid #273248;background:#151c2c;color:#a9b9ce;border-radius:8px;padding:8px 13px;cursor:pointer;font-size:11px;font-weight:700;white-space:nowrap;transition:.18s}
+    .report-filter:hover{border-color:#3b4b65;color:#e5eefb}
+    .report-filter.active{background:#08c9ef;color:#04141d;border-color:#08c9ef}
+    .report-progress{display:grid;grid-template-columns:repeat(4,1fr);margin:0 5px 25px;position:relative}
+    .report-progress::before{content:'';position:absolute;left:20px;right:20px;top:16px;height:2px;background:#22334a;z-index:0}
+    .progress-step{position:relative;z-index:1;text-align:left;color:#66809a;font-size:10px}
+    .progress-step .num{width:32px;height:32px;border-radius:50%;border:2px solid #08c9ef;background:#091322;display:flex;align-items:center;justify-content:center;color:#08c9ef;font-size:13px;font-weight:700;margin-bottom:4px}
+    .progress-step:not(:last-child)::after{content:'';position:absolute;left:42px;right:0;top:15px;height:2px;background:#08c9ef}
+    .reports-table-card{border:1px solid #252f42;border-radius:14px;background:#151c2c;overflow:hidden;box-shadow:0 10px 25px rgba(0,0,0,.08)}
+    .reports-table{width:100%;border-collapse:collapse;table-layout:fixed}
+    .reports-table th{height:56px;text-align:left;color:#7290aa;font-size:10px;font-weight:800;letter-spacing:.04em;border-bottom:1px solid #252f42;padding:0 17px}
+    .reports-table td{height:69px;border-bottom:1px solid rgba(37,47,66,.72);padding:0 17px;color:#a7b7c9;font-size:12px;overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
+    .reports-table tr:last-child td{border-bottom:none}
+    .report-photo{width:52px;height:38px;border-radius:5px;object-fit:cover;display:block;background:#293444;border:1px solid rgba(255,255,255,.08)}
+    .report-type strong{display:block;color:#e7edf5;font-size:12px;line-height:15px}
+    .report-id{display:block;color:#648099;font-size:10px;margin-top:1px}
+    .severity-chip,.status-chip{display:inline-flex;align-items:center;gap:6px;border-radius:999px;padding:4px 10px;font-size:10px;font-weight:800;line-height:1}
+    .severity-chip::before{content:'';width:7px;height:7px;border-radius:50%;background:currentColor}
+    .sev-critical{color:#ff4d58;background:rgba(255,77,88,.14)}
+    .sev-severe{color:#ff7417;background:rgba(255,116,23,.15)}
+    .sev-moderate{color:#ffb51d;background:rgba(255,181,29,.15)}
+    .sev-minor{color:#08d77d;background:rgba(8,215,125,.14)}
+    .status-chip{padding:5px 11px}
+    .status-assigned{color:#ffb000;background:rgba(255,176,0,.15)}
+    .status-progress{color:#8b5cf6;background:rgba(139,92,246,.16)}
+    .status-reported{color:#08c9ef;background:rgba(8,201,239,.14)}
+    .status-repaired{color:#00d879;background:rgba(0,216,121,.14)}
+    body.light-demo .reports-search,body.light-demo .report-filter{background:#fff;border-color:#d8e2ec;color:#60748c}
+    body.light-demo .report-filter.active{background:#08bde4;color:#05202a;border-color:#08bde4}
+    body.light-demo .reports-table-card{background:#fff;border-color:#dce5ee}
+    body.light-demo .reports-table th{border-bottom-color:#dce5ee;color:#70879d}
+    body.light-demo .reports-table td{border-bottom-color:#e8eef4;color:#63788e}
+    body.light-demo .report-type strong{color:#263a52}
+    body.light-demo .report-progress::before{background:#cbd8e5}
+    body.light-demo .progress-step .num{background:#fff}
+    @media(max-width:1050px){.reports-toolbar{flex-wrap:wrap}.reports-search-wrap{flex-basis:100%}.report-filters{width:100%;overflow:auto}.reports-table-card{overflow-x:auto}.reports-table{min-width:850px}}
+    .page-section.is-visible{display:block}
+    .map-view-page{padding-top:23px}
+    .map-view-page .page-heading{margin-bottom:20px}
+    .map-filter-row{display:flex;align-items:center;gap:8px;flex-wrap:wrap;margin-bottom:12px}
+    .map-filter{
+      border:1px solid #263247;background:#141b2b;color:#a9b9ce;
+      border-radius:9px;padding:9px 14px;display:inline-flex;align-items:center;gap:7px;
+      cursor:pointer;font-size:12px;font-weight:700;transition:.18s;
+    }
+    .map-filter:hover{border-color:#3b4b65;color:#e5eefb;transform:translateY(-1px)}
+    .map-filter.active{background:#0bc5ed;color:#04141d;border-color:#0bc5ed;box-shadow:0 7px 18px rgba(18,201,243,.16)}
+    .map-filter-dot{width:10px;height:10px;border-radius:50%;display:inline-block;box-shadow:0 0 7px currentColor}
+    .map-count{font-size:12px;color:#7187a4;margin-left:5px}
+    .map-view-card{
+      border:1px solid #252f42;border-radius:14px;background:#151c2c;
+      box-shadow:var(--shadow);overflow:hidden;position:relative;
+    }
+    #fullLeafletMap{height:calc(100vh - 270px);min-height:540px;width:100%;background:#20252a}
+    .map-view-legend{
+      min-height:42px;padding:10px 18px;display:flex;align-items:center;gap:18px;
+      background:#121a2a;border-top:1px solid #252f42;color:#8ca0ba;font-size:11px;
+    }
+    .map-view-legend .legend-item{display:flex;align-items:center;gap:6px;font-weight:600}
+    .map-view-legend .legend-dot{width:10px;height:10px;border-radius:50%;box-shadow:0 0 7px currentColor}
+    .leaflet-container{font-family:Inter,Segoe UI,Arial,sans-serif}
+    .leaflet-control-zoom a{background:#0c1627!important;color:#11c8f2!important;border-color:#243249!important}
+    .leaflet-control-zoom a:hover{background:#132238!important}
+    .leaflet-control-attribution{font-size:10px!important}
+    .hazard-popup strong{display:block;margin-bottom:4px;font-size:13px}
+    .hazard-popup span{font-size:11px;color:#63748b}
+    .hazard-popup .severity{font-weight:800}
+    body.light-demo .map-filter{background:#fff;border-color:#d8e2ec;color:#60748c}
+    body.light-demo .map-filter:hover{border-color:#b9c9da;color:#263a52}
+    body.light-demo .map-filter.active{background:#08bde4;color:#05202a;border-color:#08bde4}
+    body.light-demo .map-count{color:#6f8198}
+    body.light-demo .map-view-card{background:#fff;border-color:#dce5ee}
+    body.light-demo .map-view-legend{background:#f7f9fc;border-top-color:#dce5ee;color:#60748c}
+    body.light-demo .leaflet-control-zoom a{background:#fff!important;color:#078fb5!important;border-color:#d8e2ec!important}
+    body.light-demo .leaflet-control-zoom a:hover{background:#f2f7fb!important}
+    @media(max-width:760px){
+      #fullLeafletMap{height:calc(100vh - 310px);min-height:430px}
+      .map-view-legend{gap:10px;flex-wrap:wrap}
+    }
+  </style>
+</head>
+
+<body>
+<div class="dashboard-entry" id="dashboardEntry" aria-hidden="true">
+  <div class="entry-glow"></div>
+  <div class="entry-check">✓</div>
+</div>
+
+<div class="app dashboard-entering" id="dashboardApp">
+
+  <!-- ================= SIDEBAR ================= -->
+  <aside class="sidebar" id="sidebar">
+    <div class="brand">
+      <div class="brand-mark">◆</div>
+      <div class="brand-name">Road<span>Care</span></div>
+      <div class="brand-ai">3D</div>
+      <button class="collapse-btn" id="collapseBtn" title="Collapse sidebar"><span>‹</span></button>
+    </div>
+
+    <div class="role-wrap">
+      <div class="role-badge">
+        <span>♟</span> Citizen
+      </div>
+    </div>
+
+    <nav class="nav">
+      <button class="nav-item active" data-name="Dashboard">
+        <span class="nav-icon">
+          <svg viewBox="0 0 24 24" fill="none" stroke-width="1.8"><rect x="4" y="4" width="6" height="6" rx="1"/><rect x="14" y="4" width="6" height="6" rx="1"/><rect x="4" y="14" width="6" height="6" rx="1"/><rect x="14" y="14" width="6" height="6" rx="1"/></svg>
+        </span>Dashboard
+      </button>
+
+      <button class="nav-item" data-name="Map View">
+        <span class="nav-icon">
+          <svg viewBox="0 0 24 24" fill="none" stroke-width="1.8"><path d="m9 18-6 3V6l6-3 6 3 6-3v15l-6 3-6-3Z"/><path d="M9 3v15M15 6v15"/></svg>
+        </span>Map View
+      </button>
+
+      <button class="nav-item" data-name="My Reports">
+        <span class="nav-icon">
+          <svg viewBox="0 0 24 24" fill="none" stroke-width="1.8"><path d="M7 3h8l4 4v14H7a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2Z"/><path d="M14 3v5h5M9 12h6M9 16h6"/></svg>
+        </span>My Reports
+      </button>
+
+      <button class="nav-item" data-name="Report Damage">
+        <span class="nav-icon">
+          <svg viewBox="0 0 24 24" fill="none" stroke-width="1.8"><path d="M12 19V5M7 10l5-5 5 5M5 19h14"/></svg>
+        </span>Report Damage
+      </button>
+
+      <button class="nav-item" data-name="Safe Route">
+        <span class="nav-icon">
+          <svg viewBox="0 0 24 24" fill="none" stroke-width="1.8"><path d="M4 5.5 9 3l6 3 5-2.5v15L15 21l-6-3-5 2.5v-15Z"/><path d="M9 3v15M15 6v15"/></svg>
+        </span>Safe Route
+      </button>
+
+      <button class="nav-item" data-name="Settings">
+        <span class="nav-icon">
+          <svg viewBox="0 0 24 24" fill="none" stroke-width="1.8"><circle cx="12" cy="12" r="3"/><path d="M19.4 15a1.7 1.7 0 0 0 .34 1.88l.06.06-1.9 1.9-.06-.06a1.7 1.7 0 0 0-1.88-.34 1.7 1.7 0 0 0-1.03 1.55V20h-2.68v-.09a1.7 1.7 0 0 0-1.03-1.55 1.7 1.7 0 0 0-1.88.34l-.06.06-1.9-1.9.06-.06A1.7 1.7 0 0 0 5.8 15a1.7 1.7 0 0 0-1.55-1.03H4v-2.68h.09A1.7 1.7 0 0 0 5.64 10a1.7 1.7 0 0 0-.34-1.88l-.06-.06 1.9-1.9.06.06A1.7 1.7 0 0 0 9.08 6a1.7 1.7 0 0 0 1.03-1.55V4h2.68v.09A1.7 1.7 0 0 0 13.82 5.64a1.7 1.7 0 0 0 1.88-.34l.06-.06 1.9 1.9-.06.06A1.7 1.7 0 0 0 17.94 9c.22.62.81 1.03 1.47 1.03H20v2.68h-.09A1.7 1.7 0 0 0 18.36 15Z"/></svg>
+        </span>Settings
+      </button>
+    </nav>
+
+    <div class="sidebar-spacer"></div>
+
+    <button class="nav-item logout" id="logoutBtn">
+      <span class="nav-icon">
+        <svg viewBox="0 0 24 24" fill="none" stroke-width="1.8"><path d="M10 17l5-5-5-5M15 12H3"/><path d="M21 19V5a2 2 0 0 0-2-2h-5"/></svg>
+      </span>Logout
+    </button>
+  </aside>
+
+  <!-- ================= MAIN ================= -->
+  <main class="main">
+
+    <header class="topbar">
+      <div class="critical-banner">
+        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M12 3 2.8 20h18.4L12 3Z"/><path d="M12 9v5M12 17h.01"/></svg>
+        Critical road alert — immediate action required
+      </div>
+
+      <div class="top-actions">
+        <button class="top-btn" id="themeBtn" title="Toggle theme">
+          <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8"><circle cx="12" cy="12" r="4"/><path d="M12 2v2M12 20v2M4.93 4.93l1.41 1.41M17.66 17.66l1.41 1.41M2 12h2M20 12h2M4.93 19.07l1.41-1.41M17.66 6.34l1.41-1.41"/></svg>
+        </button>
+        <button class="top-btn" id="notificationBtn" title="Notifications">
+          <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8"><path d="M18 8a6 6 0 0 0-12 0c0 7-3 7-3 9h18c0-2-3-2-3-9M10 21h4"/></svg>
+          <span class="notif-count">3</span>
+        </button>
+        <button class="profile" id="profileBtn">
+          <span class="avatar">C</span>
+          <span class="profile-text"><strong>Citizen</strong><span>Citizen</span></span>
+        </button>
+      </div>
+    </header>
+
+    <section class="content page-section is-visible" id="dashboardView">
+
+      <div class="page-heading">
+        <h1>My Dashboard</h1>
+        <p>Stay informed about road hazards in your area</p>
+      </div>
+
+      <section class="stats">
+        <article class="stat" style="--accent:#ff4d58">
+          <div class="stat-label">Nearby Hazards</div>
+          <div class="stat-value">7</div>
+          <div class="stat-note">Within 5km of you</div>
+          <div class="stat-icon">
+            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8"><path d="M12 3 2.8 20h18.4L12 3Z"/><path d="M12 9v5M12 17h.01"/></svg>
+          </div>
+        </article>
+
+        <article class="stat" style="--accent:#13c9f2">
+          <div class="stat-label">My Reports</div>
+          <div class="stat-value">4</div>
+          <div class="stat-note">Submitted by you</div>
+          <div class="stat-icon">
+            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8"><path d="M7 3h8l4 4v14H7a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2Z"/><path d="M14 3v5h5M9 12h6M9 16h6"/></svg>
+          </div>
+        </article>
+
+        <article class="stat" style="--accent:#ff4d58">
+          <div class="stat-label">Critical Nearby</div>
+          <div class="stat-value">2</div>
+          <div class="stat-note">Needs immediate action</div>
+          <div class="stat-icon">
+            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8"><path d="m13 2-9 12h7l-1 8 9-12h-7l1-8Z"/></svg>
+          </div>
+        </article>
+
+        <article class="stat" style="--accent:#08d77d">
+          <div class="stat-label">Active Alerts</div>
+          <div class="stat-value">3</div>
+          <div class="stat-note">From the city system</div>
+          <div class="stat-icon">
+            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8"><circle cx="12" cy="12" r="9"/><path d="m8 12 2.5 2.5L16 9"/></svg>
+          </div>
+        </article>
+      </section>
+
+      <button class="report-btn" id="reportDamageBtn">
+        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M12 19V5M7 10l5-5 5 5"/><circle cx="12" cy="19" r="2"/></svg>
+        Report Road Damage
+      </button>
+
+      <section class="lower-grid">
+
+        <!-- MAP -->
+        <article class="panel">
+          <div class="panel-head">
+            <div class="panel-title">
+              <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.9"><path d="M20 10c0 5-8 11-8 11S4 15 4 10a8 8 0 1 1 16 0Z"/><circle cx="12" cy="10" r="2.5"/></svg>
+              Nearby Hazards Map
+            </div>
+            <button class="full-map" id="fullMapBtn">Full Map</button>
+          </div>
+
+          <div class="map-area leaflet-mini-wrap" id="mapArea">
+            <div id="miniLeafletMap" aria-label="OpenStreetMap nearby hazards map"></div>
+          </div>
+
+          <div class="map-legend">
+            <span class="legend-item"><i class="legend-dot" style="background:#19d981"></i>Minor</span>
+            <span class="legend-item"><i class="legend-dot" style="background:#ffb51d"></i>Moderate</span>
+            <span class="legend-item"><i class="legend-dot" style="background:#ff7650"></i>Severe</span>
+            <span class="legend-item"><i class="legend-dot" style="background:#ff4d58"></i>Critical</span>
+          </div>
+        </article>
+
+        <div class="stack">
+
+          <!-- ALERTS -->
+          <article class="panel">
+            <div class="panel-head">
+              <div class="panel-title">
+                <svg viewBox="0 0 24 24" fill="none" stroke="#ff4d58" stroke-width="1.9"><path d="M12 3 2.8 20h18.4L12 3Z"/><path d="M12 9v5M12 17h.01"/></svg>
+                Active Alerts
+              </div>
+            </div>
+
+            <div class="alerts">
+              <div class="alert critical">
+                <div class="alert-icon">
+                  <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8"><path d="M12 3 2.8 20h18.4L12 3Z"/><path d="M12 9v5M12 17h.01"/></svg>
+                </div>
+                <strong>Critical road damage reported</strong>
+                <span>Immediate attention is required in your nearby area.</span>
+              </div>
+
+              <div class="alert warning">
+                <div class="alert-icon">
+                  <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8"><path d="M12 3 2.8 20h18.4L12 3Z"/><path d="M12 9v5M12 17h.01"/></svg>
+                </div>
+                <strong>Multiple reports at one location</strong>
+                <span>Several citizens reported damage in the same area.</span>
+              </div>
+
+              <div class="alert repair">
+                <div class="alert-icon">
+                  <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8"><path d="m14 7 3-3 3 3-3 3M4 20l9-9"/></svg>
+                </div>
+                <strong>Repair update available</strong>
+                <span>A previously reported road issue has been updated.</span>
+              </div>
+            </div>
+          </article>
+
+          <!-- RECENT REPORTS -->
+          <article class="panel">
+            <div class="recent-head">
+              <div class="recent-title">
+                <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8"><circle cx="12" cy="12" r="9"/><path d="M12 7v5l3 2"/></svg>
+                My Recent Reports
+              </div>
+              <button class="view-all" id="viewAllBtn">View All</button>
+            </div>
+
+            <div class="reports">
+              <div class="report-row">
+                <div class="report-thumb"></div>
+                <div class="report-info">
+                  <strong>Pothole</strong>
+                  <span>Main Road, near Signal 7</span>
+                </div>
+                <span class="status assigned">ASSIGNED</span>
+              </div>
+
+              <div class="report-row">
+                <div class="report-thumb"></div>
+                <div class="report-info">
+                  <strong>Road Crack</strong>
+                  <span>Central Street, Junction</span>
+                </div>
+                <span class="status progress">IN PROGRESS</span>
+              </div>
+
+              <div class="report-row">
+                <div class="report-thumb"></div>
+                <div class="report-info">
+                  <strong>Damaged Road Edge</strong>
+                  <span>North District, Block 3</span>
+                </div>
+                <span class="status fixed">FIXED</span>
+              </div>
+            </div>
+          </article>
+
+        </div>
+      </section>
+    </section>
+
+    <!-- ================= MAP VIEW ================= -->
+    <section class="content page-section" id="mapView">
+      <div class="page-heading">
+        <h1>Map View</h1>
+        <p>Color-coded road hazard markers in your city</p>
+      </div>
+
+      <div class="map-filter-row">
+        <button class="map-filter active" data-filter="all"><span>🗺️</span>All</button>
+        <button class="map-filter" data-filter="minor"><i class="map-filter-dot" style="background:#19d981;color:#19d981"></i>Minor</button>
+        <button class="map-filter" data-filter="moderate"><i class="map-filter-dot" style="background:#ffb51d;color:#ffb51d"></i>Moderate</button>
+        <button class="map-filter" data-filter="severe"><i class="map-filter-dot" style="background:#ff7650;color:#ff7650"></i>Severe</button>
+        <button class="map-filter" data-filter="critical"><i class="map-filter-dot" style="background:#ff4d58;color:#ff4d58"></i>Critical</button>
+        <span class="map-count" id="mapMarkerCount">8 markers</span>
+      </div>
+
+      <div class="map-view-card">
+        <div id="fullLeafletMap" aria-label="OpenStreetMap road hazard map"></div>
+        <div class="map-view-legend">
+          <span>Legend:</span>
+          <span class="legend-item"><i class="legend-dot" style="background:#19d981;color:#19d981"></i>Minor</span>
+          <span class="legend-item"><i class="legend-dot" style="background:#ffb51d;color:#ffb51d"></i>Moderate</span>
+          <span class="legend-item"><i class="legend-dot" style="background:#ff7650;color:#ff7650"></i>Severe</span>
+          <span class="legend-item"><i class="legend-dot" style="background:#ff4d58;color:#ff4d58"></i>Critical — pulse</span>
+        </div>
+      </div>
+    </section>
+
+
+    <!-- ================= REPORT DAMAGE ================= -->
+    <section class="content page-section report-damage-page" id="reportDamageView">
+      <div class="page-heading">
+        <h1>Report Road Damage</h1>
+        <p>AI-powered damage detection — upload a photo and let AI do the rest</p>
+      </div>
+
+      <div class="damage-layout">
+        <div class="damage-left">
+          <div class="damage-card">
+            <div class="damage-card-title">
+              <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M4 7h3l2-3h6l2 3h3a2 2 0 0 1 2 2v9a2 2 0 0 1-2 2H4a2 2 0 0 1-2-2V9a2 2 0 0 1 2-2Z"/><circle cx="12" cy="13" r="3.5"/></svg>
+              Upload / Capture Photo
+            </div>
+            <input id="damagePhotoInput" type="file" accept="image/jpeg,image/png,image/heic,image/heif" hidden>
+            <div class="upload-zone" id="damageUploadZone">
+              <img id="damagePreview" class="upload-preview" alt="Selected road damage">
+              <div id="damageUploadPrompt">
+                <svg class="upload-icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M12 16V4"/><path d="m7 9 5-5 5 5"/><path d="M5 20h14a2 2 0 0 0 2-2v-3"/><path d="M3 15v3a2 2 0 0 0 2 2"/></svg>
+                <strong>Drop image here or click to upload</strong>
+                <span>JPG, PNG, HEIC supported</span>
+              </div>
+              <div class="upload-overlay" id="damageUploadOverlay">
+                <span id="damageFileName">Image selected</span>
+                <button type="button" class="remove-photo" id="removeDamagePhoto">Remove</button>
+              </div>
+            </div>
+          </div>
+
+          <div class="damage-card location-card">
+            <div class="damage-card-title">
+              <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M20 10c0 5-8 11-8 11S4 15 4 10a8 8 0 1 1 16 0Z"/><circle cx="12" cy="10" r="2.5"/></svg>
+              Location
+            </div>
+            <div class="location-row">
+              <input class="damage-input" id="damageLocation" type="text" placeholder="GPS location or address..." autocomplete="street-address">
+              <button type="button" class="gps-btn" id="damageGpsBtn">
+                <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><circle cx="12" cy="12" r="3"/><path d="M12 2v3M12 19v3M2 12h3M19 12h3"/></svg>
+                <span>GPS</span>
+              </button>
+            </div>
+            <div class="exact-location-field">
+              <label class="damage-label" for="damageExactLocation">Exact Location</label>
+              <input class="damage-input" id="damageExactLocation" type="text" placeholder="Enter the exact location, street, landmark, etc..." autocomplete="street-address">
+            </div>
+          </div>
+        </div>
+
+        <div class="damage-right">
+          <div class="damage-card">
+            <div class="damage-card-title">Damage Details</div>
+
+            <div class="damage-field">
+              <label class="damage-label" for="damageType">Damage Type</label>
+              <select class="damage-select" id="damageType">
+                <option value="">Select type...</option>
+                <option>Pothole</option>
+                <option>Road Crack</option>
+                <option>Alligator Crack</option>
+                <option>Surface Damage</option>
+                <option>Edge Break</option>
+                <option>Manhole Issue</option>
+                <option>Other</option>
+              </select>
+            </div>
+
+            <div class="damage-field">
+              <label class="damage-label">Severity</label>
+              <div class="severity-row" id="severityRow">
+                <button type="button" class="severity-btn" data-severity="Minor"><i class="severity-dot"></i>Minor</button>
+                <button type="button" class="severity-btn" data-severity="Moderate"><i class="severity-dot"></i>Moderate</button>
+                <button type="button" class="severity-btn" data-severity="Severe"><i class="severity-dot"></i>Severe</button>
+                <button type="button" class="severity-btn" data-severity="Critical"><i class="severity-dot"></i>Critical</button>
+              </div>
+            </div>
+
+            <div class="damage-field">
+              <label class="damage-label" for="damageDescription">Description</label>
+              <textarea class="damage-textarea" id="damageDescription" placeholder="Describe the road damage in detail..."></textarea>
+            </div>
+
+            <button type="button" class="submit-report-btn" id="submitDamageReport">Submit Report</button>
+            <div class="submit-hint" id="damageSubmitHint">Please upload a photo to submit</div>
+            <div class="damage-status" id="damageStatus"></div>
+          </div>
+        </div>
+      </div>
+    </section>
+
+
+    <!-- ================= SAFE ROUTE ================= -->
+    <section class="content page-section safe-route-page" id="safeRouteView">
+      <div class="page-heading">
+        <h1>Safe Route Planner</h1>
+        <p>Navigate safely avoiding road hazards in your area</p>
+      </div>
+
+      <div class="safe-route-notices">
+        <div class="safe-route-notice current">
+          <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8"><path d="m3 11 18-8-8 18-2-8-8-2Z"/></svg>
+          Current Route — 2 hazards detected along the way
+        </div>
+        <div class="safe-route-notice safer">
+          <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8"><path d="M12 3 5 6v5c0 4.7 2.9 8.9 7 10 4.1-1.1 7-5.3 7-10V6l-7-3Z"/><path d="m9 12 2 2 4-4"/></svg>
+          Safer Route Available — avoid all severe hazards
+        </div>
+      </div>
+
+      <div class="safe-route-grid">
+        <div class="safe-route-map-card">
+          <div id="safeRouteMap" aria-label="OpenStreetMap safe route map"></div>
+        </div>
+
+        <div class="safe-route-side">
+          <div class="safe-route-card">
+            <h3>⚠️ Hazards Along Route</h3>
+
+            <div class="route-hazard">
+              <i class="route-hazard-dot" style="background:#ff4d58;color:#ff4d58"></i>
+              <div class="route-hazard-info">
+                <strong>Critical Pothole</strong>
+                <span>500m from route</span>
+              </div>
+              <span class="route-severity critical">● CRITICAL</span>
+            </div>
+
+            <div class="route-hazard">
+              <i class="route-hazard-dot" style="background:#ff7650;color:#ff7650"></i>
+              <div class="route-hazard-info">
+                <strong>Road Crack</strong>
+                <span>On route — caution</span>
+              </div>
+              <span class="route-severity severe">● SEVERE</span>
+            </div>
+
+            <div class="route-hazard">
+              <i class="route-hazard-dot" style="background:#ffb51d;color:#ffb51d"></i>
+              <div class="route-hazard-info">
+                <strong>Surface Damage</strong>
+                <span>200m from route</span>
+              </div>
+              <span class="route-severity moderate">● MODERATE</span>
+            </div>
+          </div>
+
+          <div class="safe-route-card">
+            <h3>Route Legend</h3>
+            <div class="route-legend">
+              <div class="route-legend-row"><i class="route-line"></i>Safer alternate route (recommended)</div>
+              <div class="route-legend-row"><i class="route-line current"></i>Current route (2 hazards)</div>
+            </div>
+          </div>
+
+          <div class="route-critical-alert">
+            <strong>⚠ Critical Hazard On Route</strong>
+            <span>Severe pothole detected at NH-44 Km 34 — route detour recommended</span>
+          </div>
+        </div>
+      </div>
+    </section>
+
+
+    <!-- ================= SETTINGS ================= -->
+    <section class="content page-section settings-page" id="settingsView">
+      <div class="page-heading">
+        <h1>Settings</h1>
+        <p>Manage your account and preferences</p>
+      </div>
+
+      <div class="settings-card">
+        <h3><svg viewBox="0 0 24 24" fill="none" stroke-width="1.8"><circle cx="12" cy="8" r="3"/><path d="M5 20c.8-3.4 3.1-5 7-5s6.2 1.6 7 5"/></svg>Profile</h3>
+        <div class="settings-profile">
+          <div class="settings-avatar" id="settingsAvatar">C</div>
+          <div><strong id="settingsProfileName">citizen</strong><span>Citizen · Citizen@Demo.Com</span></div>
+        </div>
+        <div class="settings-grid">
+          <div class="settings-field"><label for="settingsDisplayName">Display Name</label><input class="settings-input" id="settingsDisplayName" value="citizen" maxlength="40"></div>
+          <div class="settings-field"><label for="settingsEmail">Email</label><input class="settings-input" id="settingsEmail" value="citizen@demo.com" readonly></div>
+        </div>
+      </div>
+
+      <div class="settings-card">
+        <h3><svg viewBox="0 0 24 24" fill="none" stroke-width="1.8"><path d="M18 8a6 6 0 0 0-12 0c0 7-3 7-3 9h18c0-2-3-2-3-9Z"/><path d="M10 21h4"/></svg>Notifications</h3>
+        <div class="settings-row"><div><strong>Critical alerts via SMS</strong></div><label class="switch"><input type="checkbox" id="notifySms" checked><span class="switch-slider"></span></label></div>
+        <div class="settings-row"><div><strong>Email digest (daily)</strong></div><label class="switch"><input type="checkbox" id="notifyEmail"><span class="switch-slider"></span></label></div>
+        <div class="settings-row"><div><strong>Push notifications</strong></div><label class="switch"><input type="checkbox" id="notifyPush" checked><span class="switch-slider"></span></label></div>
+        <div class="settings-row"><div><strong>Repair status updates</strong></div><label class="switch"><input type="checkbox" id="notifyRepair" checked><span class="switch-slider"></span></label></div>
+      </div>
+
+      <div class="settings-card">
+        <h3><svg viewBox="0 0 24 24" fill="none" stroke-width="1.8"><circle cx="12" cy="12" r="9"/><path d="M3 12h18M12 3c2.3 2.5 3.5 5.5 3.5 9S14.3 18.5 12 21c-2.3-2.5-3.5-5.5-3.5-9S9.7 5.5 12 3Z"/></svg>App Settings</h3>
+        <div class="settings-app-field"><label class="settings-label" for="detectionRadius">Detection Radius</label><select class="settings-select" id="detectionRadius"><option>1 km</option><option selected>5 km</option><option>10 km</option><option>25 km</option></select></div>
+        <div class="settings-app-field"><label class="settings-label" for="settingsLanguage">Language</label><select class="settings-select" id="settingsLanguage"><option selected>English</option><option>Arabic</option><option>Kurdish</option></select></div>
+      </div>
+
+      <button class="settings-save" id="saveSettingsBtn">Save Changes</button>
+    </section>
+
+    <!-- ================= MY REPORTS ================= -->
+    <section class="content page-section my-reports-page" id="myReportsView">
+      <div class="page-heading">
+        <h1>My Reports</h1>
+        <p>Track the status of your damage reports</p>
+      </div>
+
+      <div class="reports-toolbar">
+        <div class="reports-search-wrap">
+          <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><circle cx="11" cy="11" r="7"/><path d="m20 20-4-4"/></svg>
+          <input class="reports-search" id="reportsSearch" type="text" placeholder="Search reports...">
+        </div>
+        <div class="report-filters">
+          <button class="report-filter active" data-report-filter="all">All</button>
+          <button class="report-filter" data-report-filter="reported">Reported</button>
+          <button class="report-filter" data-report-filter="assigned">Assigned</button>
+          <button class="report-filter" data-report-filter="in progress">In Progress</button>
+          <button class="report-filter" data-report-filter="repaired">Repaired</button>
+        </div>
+      </div>
+
+      <div class="report-progress">
+        <div class="progress-step"><div class="num">1</div><span>Reported</span></div>
+        <div class="progress-step"><div class="num">2</div><span>Assigned</span></div>
+        <div class="progress-step"><div class="num">3</div><span>In Progress</span></div>
+        <div class="progress-step"><div class="num">4</div><span>Repaired</span></div>
+      </div>
+
+      <div class="reports-table-card">
+        <table class="reports-table">
+          <colgroup><col style="width:15%"><col style="width:16%"><col style="width:15%"><col style="width:27%"><col style="width:12%"><col style="width:15%"></colgroup>
+          <thead><tr><th>PHOTO</th><th>TYPE</th><th>SEVERITY</th><th>LOCATION</th><th>DATE</th><th>STATUS</th></tr></thead>
+          <tbody id="reportsBody"></tbody>
+        </table>
+      </div>
+    </section>
+  </main>
+</div>
+
+<div class="toast" id="toast"></div>
+
+<!-- Full Map demo modal -->
+<div class="map-modal" id="mapModal">
+  <div class="map-modal-card">
+    <div class="modal-head">
+      <strong>Nearby Hazards — Full Map</strong>
+      <button class="modal-close" id="closeMap">✕</button>
+    </div>
+    <div class="modal-map">
+      <div id="fullDashboardMap" aria-label="OpenStreetMap nearby hazards full map"></div>
+    </div>
+  </div>
+</div>
+
+<script>
+  (() => {
+    const toast = document.getElementById('toast');
+
+    function showToast(message){
+      toast.textContent = message;
+      toast.classList.add('show');
+      clearTimeout(window.__toastTimer);
+      window.__toastTimer = setTimeout(() => toast.classList.remove('show'), 1900);
+    }
+
+    // Sidebar navigation: Dashboard and Map View are now real sections.
+    const dashboardView = document.getElementById('dashboardView');
+    const mapView = document.getElementById('mapView');
+    const myReportsView = document.getElementById('myReportsView');
+    const reportDamageView = document.getElementById('reportDamageView');
+    const safeRouteView = document.getElementById('safeRouteView');
+    const settingsView = document.getElementById('settingsView');
+    let leafletMap = null;
+    let safeRouteMap = null;
+
+    function openSection(name){
+      document.querySelectorAll('.nav-item[data-name]').forEach(n => n.classList.remove('active'));
+      const target = [...document.querySelectorAll('.nav-item[data-name]')].find(n => n.dataset.name === name);
+      if(target) target.classList.add('active');
+
+      dashboardView.classList.toggle('is-visible', name === 'Dashboard');
+      mapView.classList.toggle('is-visible', name === 'Map View');
+      myReportsView.classList.toggle('is-visible', name === 'My Reports');
+      reportDamageView.classList.toggle('is-visible', name === 'Report Damage');
+      safeRouteView.classList.toggle('is-visible', name === 'Safe Route');
+      settingsView.classList.toggle('is-visible', name === 'Settings');
+
+      if(name === 'Dashboard'){
+        initMiniLeafletMap();
+        setTimeout(() => miniLeafletMap && miniLeafletMap.invalidateSize(), 80);
+      }
+
+      if(name === 'Map View'){
+        initLeafletMap();
+        setTimeout(() => leafletMap && leafletMap.invalidateSize(), 80);
+      }
+
+      if(name === 'Safe Route'){
+        initSafeRouteMap();
+        setTimeout(() => safeRouteMap && safeRouteMap.invalidateSize(), 80);
+      }
+    }
+
+    document.querySelectorAll('.nav-item[data-name]').forEach(item => {
+      item.addEventListener('click', () => {
+        const name = item.dataset.name;
+        if(name === 'Dashboard' || name === 'Map View' || name === 'My Reports' || name === 'Report Damage' || name === 'Safe Route' || name === 'Settings'){
+          openSection(name);
+        } else {
+          document.querySelectorAll('.nav-item[data-name]').forEach(n => n.classList.remove('active'));
+          item.classList.add('active');
+          // Keep the existing dashboard visible for sections that are not built yet.
+          mapView.classList.remove('is-visible');
+          myReportsView.classList.remove('is-visible');
+          reportDamageView.classList.remove('is-visible');
+          safeRouteView.classList.remove('is-visible');
+          settingsView.classList.remove('is-visible');
+          dashboardView.classList.add('is-visible');
+          showToast(name + ' will be connected next.');
+        }
+      });
+    });
+
+    // OpenStreetMap + Leaflet. No API key and no restricted tile service.
+    const mapMarkers = [
+      {type:'critical',lat:36.1911,lng:44.0092,title:'Critical pothole',location:'60 Meter Road',detail:'Immediate attention required.'},
+      {type:'critical',lat:36.1849,lng:44.0225,title:'Severe road damage',location:'Koya Road',detail:'Large damaged section reported.'},
+      {type:'severe',lat:36.2027,lng:44.0172,title:'Damaged road edge',location:'Ankawa Road',detail:'Road edge requires repair.'},
+      {type:'severe',lat:36.1766,lng:44.0015,title:'Deep pothole',location:'Airport Road',detail:'Multiple reports received.'},
+      {type:'moderate',lat:36.2081,lng:44.0064,title:'Road crack',location:'Iskan Street',detail:'Moderate surface damage.'},
+      {type:'moderate',lat:36.1934,lng:44.0320,title:'Uneven road',location:'100 Meter Road',detail:'Monitor and schedule repair.'},
+      {type:'minor',lat:36.1818,lng:44.0370,title:'Small pothole',location:'Brayati',detail:'Minor damage reported.'},
+      {type:'minor',lat:36.2110,lng:44.0255,title:'Road surface issue',location:'Italian City area',detail:'Minor surface damage.'}
+    ];
+
+    const markerColors = {minor:'#19d981',moderate:'#ffb51d',severe:'#ff7650',critical:'#ff4d58'};
+    const markerLayers = [];
+
+    let miniLeafletMap = null;
+    const miniMarkers = [];
+
+    function makeLeafletHazardIcon(type, size){
+      const color = markerColors[type];
+      const px = size || (type === 'critical' ? 13 : 9);
+      return L.divIcon({
+        className:'',
+        html:`<span style="display:block;width:${px}px;height:${px}px;border-radius:50%;background:${color};border:2px solid rgba(255,255,255,.72);box-shadow:0 0 0 3px rgba(255,255,255,.08),0 0 12px ${color};"></span>`,
+        iconSize:[px,px],
+        iconAnchor:[px/2,px/2]
+      });
+    }
+
+    function initMiniLeafletMap(){
+      if(miniLeafletMap || typeof L === 'undefined') return;
+      miniLeafletMap = L.map('miniLeafletMap', {zoomControl:true, attributionControl:true, scrollWheelZoom:false, dragging:true, doubleClickZoom:true}).setView([36.1911,44.0092], 12);
+      L.tileLayer('https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png', {
+        maxZoom:19,
+        attribution:'&copy; OpenStreetMap contributors'
+      }).addTo(miniLeafletMap);
+
+      mapMarkers.forEach((m) => {
+        const marker = L.marker([m.lat,m.lng], {icon:makeLeafletHazardIcon(m.type)});
+        const color = markerColors[m.type];
+        marker.bindPopup(`<div class="hazard-popup"><strong>${m.title}</strong><span>${m.location}</span><br><span class="severity" style="color:${color}">${m.type.toUpperCase()}</span></div>`);
+        marker.addTo(miniLeafletMap);
+        miniMarkers.push(marker);
+      });
+    }
+
+    function initLeafletMap(){
+      if(leafletMap) return;
+      if(typeof L === 'undefined'){
+        showToast('OpenStreetMap library could not be loaded.');
+        return;
+      }
+
+      leafletMap = L.map('fullLeafletMap', {zoomControl:true}).setView([36.1911,44.0092], 12);
+
+      // Public OpenStreetMap tiles — no API key required.
+      L.tileLayer('https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png', {
+        maxZoom:19,
+        attribution:'&copy; OpenStreetMap contributors'
+      }).addTo(leafletMap);
+
+      mapMarkers.forEach((m) => {
+        const color = markerColors[m.type];
+        const marker = L.circleMarker([m.lat,m.lng], {
+          radius:m.type === 'critical' ? 10 : 7,
+          color:color,
+          weight:2,
+          opacity:1,
+          fillColor:color,
+          fillOpacity:.92,
+          className:m.type === 'critical' ? 'critical-leaflet-marker' : ''
+        });
+        marker.bindPopup(`<div class="hazard-popup"><strong>${m.title}</strong><span>${m.location}</span><br><span class="severity" style="color:${color}">${m.type.toUpperCase()}</span><br><span>${m.detail}</span></div>`);
+        marker._hazardType = m.type;
+        marker.addTo(leafletMap);
+        markerLayers.push(marker);
+      });
+
+      document.querySelectorAll('.map-filter').forEach(btn => {
+        btn.addEventListener('click', () => {
+          document.querySelectorAll('.map-filter').forEach(b => b.classList.remove('active'));
+          btn.classList.add('active');
+          const filter = btn.dataset.filter;
+          let visible = 0;
+          markerLayers.forEach(marker => {
+            const show = filter === 'all' || marker._hazardType === filter;
+            if(show){
+              marker.addTo(leafletMap);
+              visible++;
+            }else{
+              leafletMap.removeLayer(marker);
+            }
+          });
+          document.getElementById('mapMarkerCount').textContent = visible + ' markers';
+        });
+      });
+    }
+
+
+    // ---------- Safe Route / OpenStreetMap ----------
+    const safeRouteHazards = [
+      {type:'critical',lat:36.1967,lng:44.0174,title:'Critical Pothole',distance:'500m from route'},
+      {type:'severe',lat:36.1922,lng:44.0132,title:'Road Crack',distance:'On route — caution'},
+      {type:'moderate',lat:36.1888,lng:44.0186,title:'Surface Damage',distance:'200m from route'}
+    ];
+
+    function makeSafeRouteIcon(type){
+      const color = markerColors[type] || '#ff4d58';
+      const size = type === 'critical' ? 22 : 17;
+      return L.divIcon({
+        className:'safe-route-marker',
+        html:`<span class="safe-route-dot" style="width:${size}px;height:${size}px;background:${color};color:${color}"></span>`,
+        iconSize:[size,size],
+        iconAnchor:[size/2,size/2]
+      });
+    }
+
+    function initSafeRouteMap(){
+      if(safeRouteMap || typeof L === 'undefined') return;
+
+      safeRouteMap = L.map('safeRouteMap', {
+        zoomControl:true,
+        attributionControl:true,
+        scrollWheelZoom:false
+      }).setView([36.1935,44.0160],14);
+
+      L.tileLayer('https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png',{
+        maxZoom:19,
+        attribution:'&copy; OpenStreetMap contributors'
+      }).addTo(safeRouteMap);
+
+      // Demo route geometry for the prototype. It uses Leaflet only; no routing API is required.
+      const currentRoute = [
+        [36.1888,44.0098],
+        [36.1912,44.0120],
+        [36.1938,44.0142],
+        [36.1967,44.0174],
+        [36.1990,44.0190]
+      ];
+
+      const saferRoute = [
+        [36.1888,44.0098],
+        [36.1908,44.0150],
+        [36.1930,44.0192],
+        [36.1960,44.0212],
+        [36.1990,44.0190]
+      ];
+
+      L.polyline(currentRoute,{
+        color:'#ffb51d',
+        weight:4,
+        opacity:.95,
+        dashArray:'8 7',
+        lineCap:'round'
+      }).addTo(safeRouteMap);
+
+      L.polyline(saferRoute,{
+        color:'#00d98d',
+        weight:5,
+        opacity:.95,
+        lineCap:'round'
+      }).addTo(safeRouteMap);
+
+      L.marker(currentRoute[0],{
+        icon:L.divIcon({
+          className:'safe-route-marker',
+          html:'<span class="safe-route-dot" style="width:15px;height:15px;background:#08c8ee;color:#08c8ee"></span>',
+          iconSize:[15,15],
+          iconAnchor:[7.5,7.5]
+        })
+      }).addTo(safeRouteMap).bindPopup('<strong>Start</strong><br>Current location');
+
+      L.marker(currentRoute[currentRoute.length-1],{
+        icon:L.divIcon({
+          className:'safe-route-marker',
+          html:'<span class="safe-route-dot" style="width:15px;height:15px;background:#8b5cf6;color:#8b5cf6"></span>',
+          iconSize:[15,15],
+          iconAnchor:[7.5,7.5]
+        })
+      }).addTo(safeRouteMap).bindPopup('<strong>Destination</strong><br>Demo destination');
+
+      safeRouteHazards.forEach(h=>{
+        L.marker([h.lat,h.lng],{icon:makeSafeRouteIcon(h.type)})
+          .addTo(safeRouteMap)
+          .bindPopup(`<strong>${h.title}</strong><br><span>${h.distance}</span>`);
+      });
+    }
+
+    // ---------- Full Map modal (dashboard "Full Map" button) ----------
+    let fullDashboardMap = null;
+
+    function initFullDashboardMap(){
+      if(fullDashboardMap || typeof L === 'undefined') return;
+      fullDashboardMap = L.map('fullDashboardMap', {zoomControl:true, attributionControl:true}).setView([36.1911,44.0092], 12);
+
+      L.tileLayer('https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png', {
+        maxZoom:19,
+        attribution:'&copy; OpenStreetMap contributors'
+      }).addTo(fullDashboardMap);
+
+      mapMarkers.forEach((m) => {
+        const marker = L.marker([m.lat,m.lng], {icon:makeLeafletHazardIcon(m.type, m.type === 'critical' ? 15 : 11)});
+        const color = markerColors[m.type];
+        marker.bindPopup(`<div class="hazard-popup"><strong>${m.title}</strong><span>${m.location}</span><br><span class="severity" style="color:${color}">${m.type.toUpperCase()}</span><br><span>${m.detail}</span></div>`);
+        marker.addTo(fullDashboardMap);
+      });
+    }
+
+    document.getElementById('reportDamageBtn').addEventListener('click', () => {
+      openSection('Report Damage');
+      window.scrollTo({top:0,behavior:'smooth'});
+    });
+
+    // ---------- Report Damage interactions ----------
+    const damagePhotoInput = document.getElementById('damagePhotoInput');
+    const damageUploadZone = document.getElementById('damageUploadZone');
+    const damageUploadPrompt = document.getElementById('damageUploadPrompt');
+    const damagePreview = document.getElementById('damagePreview');
+    const damageUploadOverlay = document.getElementById('damageUploadOverlay');
+    const damageFileName = document.getElementById('damageFileName');
+    const removeDamagePhoto = document.getElementById('removeDamagePhoto');
+    const damageGpsBtn = document.getElementById('damageGpsBtn');
+    const damageLocation = document.getElementById('damageLocation');
+    const damageExactLocation = document.getElementById('damageExactLocation');
+    const damageType = document.getElementById('damageType');
+    const damageDescription = document.getElementById('damageDescription');
+    const submitDamageReport = document.getElementById('submitDamageReport');
+    const damageSubmitHint = document.getElementById('damageSubmitHint');
+    const damageStatus = document.getElementById('damageStatus');
+    let selectedDamagePhoto = null;
+    let selectedSeverity = '';
+
+    damageUploadZone.addEventListener('click', (e) => {
+      if(!e.target.closest('#removeDamagePhoto')) damagePhotoInput.click();
+    });
+    damageUploadZone.addEventListener('dragover', (e) => {
+      e.preventDefault();
+      damageUploadZone.classList.add('dragover');
+    });
+    damageUploadZone.addEventListener('dragleave', () => damageUploadZone.classList.remove('dragover'));
+    damageUploadZone.addEventListener('drop', (e) => {
+      e.preventDefault();
+      damageUploadZone.classList.remove('dragover');
+      const file = e.dataTransfer.files?.[0];
+      if(file) handleDamagePhoto(file);
+    });
+    damagePhotoInput.addEventListener('change', () => {
+      if(damagePhotoInput.files?.[0]) handleDamagePhoto(damagePhotoInput.files[0]);
+    });
+
+    function handleDamagePhoto(file){
+      if(!file.type.startsWith('image/')){
+        setDamageStatus('Please select an image file.', 'error');
+        return;
+      }
+      selectedDamagePhoto = file;
+      const reader = new FileReader();
+      reader.onload = e => {
+        damagePreview.src = e.target.result;
+        damagePreview.classList.add('show');
+        damageUploadPrompt.style.display = 'none';
+        damageUploadOverlay.classList.add('show');
+        damageFileName.textContent = file.name;
+        damageSubmitHint.textContent = 'Photo selected — complete the details to submit';
+        clearDamageStatus();
+      };
+      reader.readAsDataURL(file);
+    }
+
+    removeDamagePhoto.addEventListener('click', (e) => {
+      e.stopPropagation();
+      clearDamagePhoto();
+    });
+
+    function clearDamagePhoto(){
+      selectedDamagePhoto = null;
+      damagePhotoInput.value = '';
+      damagePreview.removeAttribute('src');
+      damagePreview.classList.remove('show');
+      damageUploadPrompt.style.display = '';
+      damageUploadOverlay.classList.remove('show');
+      damageSubmitHint.textContent = 'Please upload a photo to submit';
+    }
+
+    document.querySelectorAll('.severity-btn').forEach(btn => {
+      btn.addEventListener('click', () => {
+        document.querySelectorAll('.severity-btn').forEach(b => b.classList.remove('active'));
+        btn.classList.add('active');
+        selectedSeverity = btn.dataset.severity;
+        clearDamageStatus();
+      });
+    });
+
+    damageGpsBtn.addEventListener('click', () => {
+      if(!navigator.geolocation){
+        setDamageStatus('GPS is not supported by this browser.', 'error');
+        return;
+      }
+      damageGpsBtn.classList.add('loading');
+      damageGpsBtn.querySelector('span').textContent = 'Locating...';
+      navigator.geolocation.getCurrentPosition(
+        position => {
+          const lat = position.coords.latitude.toFixed(6);
+          const lng = position.coords.longitude.toFixed(6);
+          damageLocation.value = `${lat}, ${lng}`;
+          damageGpsBtn.classList.remove('loading');
+          damageGpsBtn.querySelector('span').textContent = 'GPS';
+          clearDamageStatus();
+          showToast('GPS location captured.');
+        },
+        error => {
+          damageGpsBtn.classList.remove('loading');
+          damageGpsBtn.querySelector('span').textContent = 'GPS';
+          const msg = error.code === 1 ? 'Location permission was denied.' :
+                      error.code === 2 ? 'Your location could not be determined.' :
+                      'GPS request timed out.';
+          setDamageStatus(msg, 'error');
+        },
+        {enableHighAccuracy:true,timeout:10000,maximumAge:0}
+      );
+    });
+
+    function setDamageStatus(message, type){
+      damageStatus.textContent = message;
+      damageStatus.className = 'damage-status show ' + type;
+    }
+    function clearDamageStatus(){
+      damageStatus.textContent = '';
+      damageStatus.className = 'damage-status';
+    }
+
+    function resetDamageForm(){
+      clearDamagePhoto();
+      damageType.value = '';
+      damageLocation.value = '';
+      damageExactLocation.value = '';
+      damageDescription.value = '';
+      selectedSeverity = '';
+      document.querySelectorAll('.severity-btn').forEach(b => b.classList.remove('active'));
+      clearDamageStatus();
+      damageSubmitHint.textContent = 'Please upload a photo to submit';
+    }
+
+    submitDamageReport.addEventListener('click', () => {
+      if(!selectedDamagePhoto){
+        setDamageStatus('Please upload a photo before submitting.', 'error');
+        return;
+      }
+      if(!damageType.value){
+        setDamageStatus('Please select a damage type.', 'error');
+        return;
+      }
+      if(!selectedSeverity){
+        setDamageStatus('Please select the severity.', 'error');
+        return;
+      }
+      if(!damageDescription.value.trim()){
+        setDamageStatus('Please describe the road damage.', 'error');
+        damageDescription.focus();
+        return;
+      }
+      if(!damageLocation.value.trim() && !damageExactLocation.value.trim()){
+        setDamageStatus('Please enter the location or use GPS.', 'error');
+        damageExactLocation.focus();
+        return;
+      }
+
+      // Frontend demo only: no backend/database write is performed here.
+      setDamageStatus('Report submitted successfully — ready for backend integration.', 'success');
+      showToast('Report submitted successfully.');
+      setTimeout(resetDamageForm, 900);
+    });
+
+    const demoReports = [
+      {img:'https://images.unsplash.com/photo-1547036967-23d11aacaee0?auto=format&fit=crop&w=160&q=80',type:'Pothole',id:'RPT-001',severity:'Critical',location:'Anna Salai (Mount Road, Chennai)',date:'2026-02-24',status:'Assigned'},
+      {img:'https://images.unsplash.com/photo-1517142089942-ba376ce32a0e?auto=format&fit=crop&w=160&q=80',type:'Road Crack',id:'RPT-002',severity:'Severe',location:'GST Road, Chromepet Junction',date:'2026-02-23',status:'In Progress'},
+      {img:'https://images.unsplash.com/photo-1519501025264-65ba15a82390?auto=format&fit=crop&w=160&q=80',type:'Surface Damage',id:'RPT-003',severity:'Moderate',location:'T. Nagar, Usman Road',date:'2026-02-22',status:'Reported'},
+      {img:'https://images.unsplash.com/photo-1500534623283-312aade485b7?auto=format&fit=crop&w=160&q=80',type:'Pothole',id:'RPT-004',severity:'Minor',location:'Mylapore, Luz Church Road',date:'2026-02-21',status:'Repaired'},
+      {img:'https://images.unsplash.com/photo-1544620347-c4fd4a3d5957?auto=format&fit=crop&w=160&q=80',type:'Alligator Crack',id:'RPT-005',severity:'Critical',location:'Perambur Barracks Road',date:'2026-02-20',status:'Assigned'},
+      {img:'https://images.unsplash.com/photo-1519501025264-65ba15a82390?auto=format&fit=crop&w=160&q=80',type:'Edge Break',id:'RPT-006',severity:'Severe',location:'Adyar Bridge Road, Mandaveli',date:'2026-02-19',status:'In Progress'},
+      {img:'https://images.unsplash.com/photo-1547036967-23d11aacaee0?auto=format&fit=crop&w=160&q=80',type:'Pothole',id:'RPT-007',severity:'Moderate',location:'Anna Nagar, 6th Main Road',date:'2026-02-18',status:'Reported'},
+      {img:'https://images.unsplash.com/photo-1517142089942-ba376ce32a0e?auto=format&fit=crop&w=160&q=80',type:'Manhole Issue',id:'RPT-008',severity:'Severe',location:'Royapuram Fish Market Road',date:'2026-02-17',status:'Repaired'}
+    ];
+
+    function renderReports(){
+      const body=document.getElementById('reportsBody');
+      const q=(document.getElementById('reportsSearch').value||'').toLowerCase().trim();
+      const active=document.querySelector('.report-filter.active')?.dataset.reportFilter || 'all';
+      const rows=demoReports.filter(r=>{
+        const matchesFilter=active==='all' || r.status.toLowerCase()===active;
+        const hay=(r.type+' '+r.id+' '+r.location+' '+r.date+' '+r.status+' '+r.severity).toLowerCase();
+        return matchesFilter && (!q || hay.includes(q));
+      });
+      const sevClass={Critical:'sev-critical',Severe:'sev-severe',Moderate:'sev-moderate',Minor:'sev-minor'};
+      const statusClass={'Assigned':'status-assigned','In Progress':'status-progress','Reported':'status-reported','Repaired':'status-repaired'};
+      body.innerHTML=rows.length ? rows.map(r=>`<tr>
+        <td><img class="report-photo" src="${r.img}" alt="${r.type}"></td>
+        <td><div class="report-type"><strong>${r.type}</strong><span class="report-id">${r.id}</span></div></td>
+        <td><span class="severity-chip ${sevClass[r.severity]}">${r.severity.toUpperCase()}</span></td>
+        <td title="${r.location}">${r.location}</td>
+        <td>${r.date}</td>
+        <td><span class="status-chip ${statusClass[r.status]}">${r.status.toUpperCase()}</span></td>
+      </tr>`).join('') : `<tr><td colspan="6" style="text-align:center;height:110px;color:#70879d">No reports found</td></tr>`;
+    }
+
+    document.getElementById('reportsSearch').addEventListener('input', renderReports);
+    document.querySelectorAll('.report-filter').forEach(btn=>btn.addEventListener('click',()=>{
+      document.querySelectorAll('.report-filter').forEach(b=>b.classList.remove('active'));
+      btn.classList.add('active');
+      renderReports();
+    }));
+    document.getElementById('viewAllBtn').addEventListener('click', () => openSection('My Reports'));
+    renderReports();
+
+    document.getElementById('notificationBtn').addEventListener('click', () => {
+      showToast('Notifications panel will be connected next.');
+    });
+
+    document.getElementById('profileBtn').addEventListener('click', () => openSection('Settings'));
+
+    // Settings: keep preferences locally for the prototype.
+    const settingsStoreKey = 'roadcare_settings_demo';
+    const settingsName = document.getElementById('settingsDisplayName');
+    const settingsProfileName = document.getElementById('settingsProfileName');
+    const settingsAvatar = document.getElementById('settingsAvatar');
+    const topProfileName = document.querySelector('#profileBtn .profile-text strong');
+    const topProfileRole = document.querySelector('#profileBtn .profile-text span');
+    const settingsFields = ['notifySms','notifyEmail','notifyPush','notifyRepair','detectionRadius','settingsLanguage'];
+
+    function loadSettings(){
+      try{
+        const saved = JSON.parse(localStorage.getItem(settingsStoreKey) || '{}');
+        if(saved.name) settingsName.value = saved.name;
+        settingsFields.forEach(id=>{
+          const el=document.getElementById(id);
+          if(!el || saved[id] === undefined) return;
+          if(el.type === 'checkbox') el.checked = !!saved[id]; else el.value = saved[id];
+        });
+      }catch(e){}
+      updateSettingsPreview();
+    }
+
+    function updateSettingsPreview(){
+      const name=(settingsName.value.trim() || 'citizen');
+      settingsProfileName.textContent=name;
+      settingsAvatar.textContent=name.charAt(0).toUpperCase();
+      if(topProfileName) topProfileName.textContent=name;
+      if(topProfileRole) topProfileRole.textContent='Citizen';
+    }
+
+    settingsName.addEventListener('input', updateSettingsPreview);
+    document.getElementById('saveSettingsBtn').addEventListener('click',()=>{
+      const data={name:settingsName.value.trim() || 'citizen'};
+      settingsFields.forEach(id=>{
+        const el=document.getElementById(id);
+        data[id]=el.type === 'checkbox' ? el.checked : el.value;
+      });
+      localStorage.setItem(settingsStoreKey, JSON.stringify(data));
+      updateSettingsPreview();
+      showToast('Settings saved successfully.');
+    });
+    loadSettings();
+
+    document.getElementById('logoutBtn').addEventListener('click', () => {
+      showToast('Logout will be connected when authentication is integrated.');
+    });
+
+    // Full dashboard theme system: applies to the whole UI and remembers the user's choice.
+    const themeBtn = document.getElementById('themeBtn');
+    const themeKey = 'roadcare_theme';
+
+    function applyTheme(theme, announce=false){
+      const isLight = theme === 'light';
+      document.body.classList.toggle('light-demo', isLight);
+      document.documentElement.style.colorScheme = isLight ? 'light' : 'dark';
+      localStorage.setItem(themeKey, isLight ? 'light' : 'dark');
+
+      if(themeBtn){
+        themeBtn.title = isLight ? 'Switch to dark theme' : 'Switch to light theme';
+        themeBtn.setAttribute('aria-label', themeBtn.title);
+        themeBtn.innerHTML = isLight
+          ? '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8"><path d="M21 12.8A8.5 8.5 0 1 1 11.2 3 6.7 6.7 0 0 0 21 12.8Z"/></svg>'
+          : '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8"><circle cx="12" cy="12" r="4"/><path d="M12 2v2M12 20v2M4.93 4.93l1.41 1.41M17.66 17.66l1.41 1.41M2 12h2M20 12h2M4.93 19.07l1.41-1.41M17.66 6.34l1.41-1.41"/></svg>';
+      }
+      if(announce) showToast(isLight ? 'Light theme enabled.' : 'Dark theme enabled.');
+    }
+
+    const savedTheme = localStorage.getItem(themeKey);
+    applyTheme(savedTheme === 'light' ? 'light' : 'dark');
+    initMiniLeafletMap();
+
+    themeBtn.addEventListener('click', () => {
+      applyTheme(document.body.classList.contains('light-demo') ? 'dark' : 'light', true);
+    });
+
+    // Full map demo.
+    const mapModal = document.getElementById('mapModal');
+    document.getElementById('fullMapBtn').addEventListener('click', () => {
+      mapModal.classList.add('show');
+      initFullDashboardMap();
+      setTimeout(() => fullDashboardMap && fullDashboardMap.invalidateSize(), 80);
+    });
+    document.getElementById('closeMap').addEventListener('click', () => mapModal.classList.remove('show'));
+    mapModal.addEventListener('click', e => {
+      if(e.target === mapModal) mapModal.classList.remove('show');
+    });
+    document.addEventListener('keydown', e => {
+      if(e.key === 'Escape') mapModal.classList.remove('show');
+    });
+
+    // Sidebar collapse: desktop keeps only the navigation icons; mobile opens/closes the sidebar.
+    const collapseBtn = document.getElementById('collapseBtn');
+    collapseBtn.addEventListener('click', () => {
+      const sidebar = document.getElementById('sidebar');
+      if(window.innerWidth <= 760){
+        sidebar.classList.toggle('open');
+        return;
+      }
+
+      const collapsed = document.body.classList.toggle('sidebar-collapsed');
+      collapseBtn.title = collapsed ? 'Expand sidebar' : 'Collapse sidebar';
+      collapseBtn.setAttribute('aria-label', collapseBtn.title);
+    });
+  })();
+</script>
+<script>
+(function(){
+  const entry = document.getElementById('dashboardEntry');
+  const app = document.getElementById('dashboardApp');
+  if (!entry || !app) return;
+
+  requestAnimationFrame(() => {
+    requestAnimationFrame(() => {
+      app.classList.remove('dashboard-entering');
+      app.classList.add('dashboard-entered');
+      setTimeout(() => entry.classList.add('hide'), 90);
+      setTimeout(() => entry.remove(), 850);
+    });
+  });
+})();
+</script>
+
+<div class="logout-modal" id="logoutModal" aria-hidden="true">
+  <div class="logout-box" role="dialog" aria-modal="true" aria-labelledby="logoutTitle">
+    <div class="logout-icon">
+      <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8">
+        <path d="M10 17l5-5-5-5M15 12H3"/>
+        <path d="M21 19V5a2 2 0 0 0-2-2h-5"/>
+      </svg>
+    </div>
+    <h2 id="logoutTitle">Are you sure you want to log out?</h2>
+    <p>You will return to the RoadCare 3D login page.</p>
+    <div class="logout-actions">
+      <button class="logout-cancel" id="logoutCancel" type="button">Cancel</button>
+      <button class="logout-confirm" id="logoutConfirm" type="button">Yes, Log Out</button>
+    </div>
+  </div>
+</div>
+
+
+<script>
+(function(){
+  const logoutBtn = document.getElementById('logoutBtn');
+  const modal = document.getElementById('logoutModal');
+  const cancelBtn = document.getElementById('logoutCancel');
+  const confirmBtn = document.getElementById('logoutConfirm');
+
+  if(!logoutBtn || !modal || !cancelBtn || !confirmBtn) return;
+
+  function openLogout(){
+    modal.classList.add('show');
+    modal.setAttribute('aria-hidden','false');
+    setTimeout(() => cancelBtn.focus(), 120);
+  }
+
+  function closeLogout(){
+    modal.classList.remove('show');
+    modal.setAttribute('aria-hidden','true');
+    logoutBtn.focus();
+  }
+
+  logoutBtn.addEventListener('click', openLogout);
+  cancelBtn.addEventListener('click', closeLogout);
+
+  modal.addEventListener('click', (e) => {
+    if(e.target === modal) closeLogout();
+  });
+
+  document.addEventListener('keydown', (e) => {
+    if(e.key === 'Escape' && modal.classList.contains('show')) closeLogout();
+  });
+
+  confirmBtn.addEventListener('click', () => {
+    modal.classList.remove('show');
+
+    const app = document.getElementById('dashboardApp') || document.querySelector('.app');
+    if(app) app.classList.add('logout-page-exit');
+
+    setTimeout(() => {
+      window.location.href = 'RoadCare_Login.html';
+    }, 520);
+  });
+})();
+</script>
+
+</body>
+</html>

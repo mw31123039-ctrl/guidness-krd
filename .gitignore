@@ -1,0 +1,26 @@
+# Local tools, dependencies, and generated output
+/tools/
+**/node_modules/
+**/vendor/
+**/artifacts/
+**/public/build/
+**/public/hot
+
+# Runtime data and secrets
+.env
+.env.*
+!.env.example
+*.sqlite
+*.sqlite-*
+*.log
+auth.json
+*.pem
+*.key
+
+# Machine-local editor and assistant settings
+**/.codex/
+**/.idea/
+**/.vscode/
+**/.claude/settings.local.json
+.DS_Store
+Thumbs.db
