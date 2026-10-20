@@ -1,7 +1,7 @@
 <script setup>
-import { computed, ref, watchEffect } from 'vue';
+import { computed, onMounted, ref, watchEffect } from 'vue';
 import { Head, Link, useForm, usePage } from '@inertiajs/vue3';
-import { ArrowRight, Eye, EyeOff, Camera, MapPin, ShieldCheck, Check, Route } from '@lucide/vue';
+import { ArrowRight, Eye, EyeOff, Camera, MapPin, ShieldCheck, Check, Route, Sun, Moon } from '@lucide/vue';
 import LanguageSwitch from '../Components/LanguageSwitch.vue';
 import AuthRegionMap from '../Components/AuthRegionMap.vue';
 import { useI18n } from '../i18n';
@@ -10,9 +10,16 @@ const page = usePage();
 const { t, locale } = useI18n();
 const register = computed(() => props.mode === 'register');
 const visible = ref(false);
+const theme = ref('dark');
 const form = useForm({ name: '', email: '', password: '', password_confirmation: '', phone: '', city: 'Erbil', remember: false });
 const submit = () => form.post(register.value ? '/register' : '/login', { onFinish: () => form.reset('password', 'password_confirmation') });
 function fillDemo(role) { form.email = role === 'government' ? 'government@roadcare.test' : 'citizen@demo.com'; form.password = 'RoadCare123!'; }
+function toggleTheme() {
+    theme.value = theme.value === 'dark' ? 'light' : 'dark';
+    document.documentElement.dataset.theme = theme.value;
+    localStorage.setItem('roadcare-theme', theme.value);
+}
+onMounted(() => { theme.value = document.documentElement.dataset.theme || 'dark'; });
 watchEffect(() => { document.documentElement.dir = locale.value === 'ckb' ? 'rtl' : 'ltr'; document.documentElement.lang = locale.value; });
 </script>
 <template>
@@ -24,7 +31,7 @@ watchEffect(() => { document.documentElement.dir = locale.value === 'ckb' ? 'rtl
                 <ul class="auth-features"><li><Camera :size="18" />{{ t('authFeature1') }}</li><li><MapPin :size="18" />{{ t('authFeature2') }}</li><li><ShieldCheck :size="18" />{{ t('authFeature3') }}</li></ul>
             </div><div class="auth-coverage"><span class="live-dot"></span>{{ t('coverage') }}</div>
         </section>
-        <section class="auth-form-side"><div class="auth-language"><LanguageSwitch /></div><div class="auth-form-inner"><div class="auth-form-icon"><Route :size="25" /></div><span class="eyebrow muted">{{ t('citizenPortal') }} <span class="cyan">/</span> {{ t('government') }}</span><h2>{{ t(register ? 'registerTitle' : 'loginTitle') }}</h2><p class="muted">{{ t(register ? 'registerSubtitle' : 'loginSubtitle') }}</p>
+        <section class="auth-form-side"><div class="auth-language"><button class="icon-button theme-toggle" type="button" @click="toggleTheme" :aria-label="theme === 'dark' ? 'Switch to light mode' : 'Switch to dark mode'"><Sun v-if="theme === 'dark'" :size="18" /><Moon v-else :size="18" /></button><LanguageSwitch /></div><div class="auth-form-inner"><div class="auth-form-icon"><Route :size="25" /></div><span class="eyebrow muted">{{ t('citizenPortal') }} <span class="cyan">/</span> {{ t('government') }}</span><h2>{{ t(register ? 'registerTitle' : 'loginTitle') }}</h2><p class="muted">{{ t(register ? 'registerSubtitle' : 'loginSubtitle') }}</p>
             <form @submit.prevent="submit" class="auth-form" novalidate>
                 <label v-if="register" class="field">{{ t('fullName') }}<input v-model="form.name" autocomplete="name" maxlength="100" :class="{ invalid: form.errors.name }" /><span v-if="form.errors.name" class="field-error">{{ form.errors.name }}</span></label>
                 <label class="field">{{ t('email') }}<input v-model="form.email" type="email" autocomplete="email" placeholder="you@example.com" dir="ltr" :class="{ invalid: form.errors.email }" /><span v-if="form.errors.email" class="field-error" role="alert">{{ form.errors.email }}</span></label>

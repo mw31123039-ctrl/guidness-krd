@@ -1,12 +1,13 @@
 <script setup>
-import { computed, ref, watchEffect } from 'vue';
+import { computed, onMounted, ref, watchEffect } from 'vue';
 import { Link, usePage } from '@inertiajs/vue3';
-import { LayoutDashboard, Map, ClipboardList, Plus, LogOut, ShieldCheck, Menu, X, ArrowUpRight, MapPin } from '@lucide/vue';
+import { LayoutDashboard, Map, ClipboardList, Plus, LogOut, ShieldCheck, Menu, ArrowUpRight, MapPin, Sun, Moon } from '@lucide/vue';
 import LanguageSwitch from '../Components/LanguageSwitch.vue';
 import { useI18n } from '../i18n';
 const page = usePage();
 const { t, locale } = useI18n();
 const mobileOpen = ref(false);
+const theme = ref('dark');
 const user = computed(() => page.props.auth.user);
 const government = computed(() => user.value.role === 'government');
 const nav = computed(() => [
@@ -15,6 +16,15 @@ const nav = computed(() => [
     { label: 'roadMap', href: '/map', icon: Map },
 ]);
 const active = href => page.url.split('?')[0] === href;
+function setTheme(value) {
+    theme.value = value;
+    document.documentElement.dataset.theme = value;
+    localStorage.setItem('roadcare-theme', value);
+}
+function toggleTheme() { setTheme(theme.value === 'dark' ? 'light' : 'dark'); }
+onMounted(() => {
+    theme.value = document.documentElement.dataset.theme || 'dark';
+});
 watchEffect(() => { document.documentElement.lang = locale.value; document.documentElement.dir = locale.value === 'ckb' ? 'rtl' : 'ltr'; });
 </script>
 <template>
@@ -31,7 +41,7 @@ watchEffect(() => { document.documentElement.lang = locale.value; document.docum
             </div>
         </aside>
         <div class="main-shell">
-            <header class="topbar"><div class="topbar-region"><button class="icon-button mobile-toggle" @click="mobileOpen = !mobileOpen" aria-label="Toggle navigation"><Menu :size="21" /></button><MapPin :size="16" /><span>{{ t('region') }}</span><span class="topbar-divider"></span><span class="topbar-small">{{ t(government ? 'governmentPortal' : 'citizenPortal') }}</span></div><div class="topbar-actions"><LanguageSwitch /><span class="profile-divider"></span><div class="profile-avatar">{{ user.name.charAt(0).toUpperCase() }}</div><div class="profile-info"><strong>{{ user.name }}</strong><span>{{ t(user.role) }}</span></div></div></header>
+            <header class="topbar"><div class="topbar-region"><button class="icon-button mobile-toggle" @click="mobileOpen = !mobileOpen" aria-label="Toggle navigation"><Menu :size="21" /></button><MapPin :size="16" /><span>{{ t('region') }}</span><span class="topbar-divider"></span><span class="topbar-small">{{ t(government ? 'governmentPortal' : 'citizenPortal') }}</span></div><div class="topbar-actions"><button class="icon-button theme-toggle" type="button" @click="toggleTheme" :aria-label="theme === 'dark' ? 'Switch to light mode' : 'Switch to dark mode'" :title="theme === 'dark' ? 'Light mode' : 'Dark mode'"><Sun v-if="theme === 'dark'" :size="18" /><Moon v-else :size="18" /></button><LanguageSwitch /><span class="profile-divider"></span><div class="profile-avatar">{{ user.name.charAt(0).toUpperCase() }}</div><div class="profile-info"><strong>{{ user.name }}</strong><span>{{ t(user.role) }}</span></div></div></header>
             <main class="main-content"><div v-if="page.props.flash.success" class="flash" role="status"><ShieldCheck :size="19" />{{ page.props.flash.success }}</div><div v-if="page.props.isDemo" class="demo-notice">{{ t('demoNotice') }}</div><slot /></main>
             <footer class="main-footer"><span>RoadCare <span class="footer-dot">·</span> {{ t('region') }}</span><span>{{ t('supportTitle') }}</span></footer>
         </div>
